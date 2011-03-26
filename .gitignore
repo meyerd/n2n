@@ -1,1 +1,10 @@
 .svn/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+benchmark
+doc/
+edge
+libn2n.a
+supernode
+test

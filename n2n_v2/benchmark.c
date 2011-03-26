@@ -77,7 +77,7 @@ int main( int argc, char * argv[] )
 
     tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
 
-    fprintf( stderr, "\nrun %u times. (%u -> %u nsec each) %u.%06u -> %u.%06u.\n", i, tdiff, (tdiff *1000)/i, (uint32_t)t1.tv_sec, (uint32_t)t1.tv_usec, (uint32_t)t2.tv_sec, (uint32_t)t2.tv_usec );
+    fprintf( stderr, "\nrun %lu times. (%lu -> %lu nsec each) %u.%06u -> %u.%06u.\n", i, tdiff, (tdiff *1000)/i, (uint32_t)t1.tv_sec, (uint32_t)t1.tv_usec, (uint32_t)t2.tv_sec, (uint32_t)t2.tv_usec );
 
     return 0;
 }
