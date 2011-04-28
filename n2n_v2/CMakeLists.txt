@@ -24,7 +24,7 @@ endif(NOT DEFINED BUILD_SHARED_LIBS)
 if(NOT DEFINED CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE None)
 endif(NOT DEFINED CMAKE_BUILD_TYPE)
-#set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Debug)
 #set(CMAKE_BUILD_TYPE Release)
 
 #Ultrasparc64 users experiencing SIGBUS should try the following gcc options
@@ -32,7 +32,7 @@ endif(NOT DEFINED CMAKE_BUILD_TYPE)
 #PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finline-functions -fweb -frename-registers -mapp-regs
 
 # None
-set(CMAKE_C_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
+set(CMAKE_C_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs -fPIC")
 set(CMAKE_CXX_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
 # Debug 
 set(CMAKE_C_FLAGS_DEBUG "-g")
