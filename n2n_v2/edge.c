@@ -1426,6 +1426,10 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
     socklen_t           i;
     size_t              msg_len;
     time_t              now;
+	macstr_t			mac_buf;
+	n2n_sock_str_t		sockbuf;
+	struct peer_info *	lpi;
+	int					c;
 
     now = time(NULL);
     i = sizeof(sender_sock);
@@ -1459,6 +1463,7 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
                                  "  help    This help message\n"
                                  "  +verb   Increase verbosity of logging\n"
                                  "  -verb   Decrease verbosity of logging\n"
+								 "  peers   List table of known peers\n"
                                  "  reload  Re-read the keyschedule\n"
                                  "  <enter> Display statistics\n\n");
 
@@ -1509,6 +1514,57 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
                     (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
             return;
         }
+
+		if ( 0 == memcmp( udp_buf, "peers", 5 ) )
+		{
+			msg_len = 0;
+			
+			msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
+								 "> known peers (connected edges):\n");
+
+			traceEvent( TRACE_ERROR, "listing peers on mgmt socket", 0);
+			sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+				(struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
+
+			lpi = eee->known_peers;
+			c = 0;
+			while( lpi != NULL )
+			{
+				c++;
+				msg_len = 0;
+				msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
+					">  %i: %s -> %s last: %li\n", c, macaddr_str( mac_buf, lpi->mac_addr ), 
+						sock_to_cstr( sockbuf, &(lpi->sock) ),
+						lpi->last_seen);
+				sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+					(struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
+				lpi = lpi->next;
+			}
+
+			msg_len = 0;
+			
+			msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
+								 "> known peers (tried edges):\n");
+			sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+				(struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
+
+			lpi = eee->pending_peers;
+			c = 0;
+			while( lpi != NULL )
+			{
+				c++;
+				msg_len = 0;
+				msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
+					">  %i: %s -> %s last: %li\n", c, macaddr_str( mac_buf, lpi->mac_addr ), 
+						sock_to_cstr( sockbuf, &(lpi->sock) ),
+						lpi->last_seen);
+				sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+					(struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
+				lpi = lpi->next;
+			}
+
+			return;
+		}
     }
 
     if ( recvlen >= 6 )
