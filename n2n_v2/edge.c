@@ -1455,7 +1455,7 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
         if ( 0 == memcmp( udp_buf, "help", 4 ) )
         {
             msg_len=0;
-            ++traceLevel;
+            //++traceLevel;
 
             msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
                                  "Help for edge management console:\n"
