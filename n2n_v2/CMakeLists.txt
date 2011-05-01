@@ -7,7 +7,11 @@ set(N2N_OSNAME ${CMAKE_SYSTEM})
 
 # N2n specific params
 if(NOT DEFINED N2N_OPTION_AES)
+if(NOT WIN32)
 set(N2N_OPTION_AES ON)
+else(NOT WIN32)
+set(N2N_OPTIONS_AES OFF)
+endif(NOT WIN32)
 endif(NOT DEFINED N2N_OPTION_AES)
 
 add_definitions(-DN2N_VERSION=\"${N2N_VERSION}\" -DN2N_OSNAME=\"${N2N_OSNAME}\")
@@ -24,7 +28,7 @@ endif(NOT DEFINED BUILD_SHARED_LIBS)
 if(NOT DEFINED CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE None)
 endif(NOT DEFINED CMAKE_BUILD_TYPE)
-set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_BUILD_TYPE Debug)
 #set(CMAKE_BUILD_TYPE Release)
 
 #Ultrasparc64 users experiencing SIGBUS should try the following gcc options
@@ -32,6 +36,7 @@ set(CMAKE_BUILD_TYPE Debug)
 #PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finline-functions -fweb -frename-registers -mapp-regs
 
 # None
+if(NOT WIN32)
 set(CMAKE_C_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs -fPIC")
 set(CMAKE_CXX_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
 # Debug 
@@ -40,6 +45,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 # Release
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+endif(NOT WIN32)
 
 ## DEBUG FOR CMAKE
 #message(${N2N_VERSION}) 

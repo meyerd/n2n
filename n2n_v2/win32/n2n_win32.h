@@ -45,7 +45,7 @@ typedef int ssize_t;
 typedef unsigned long in_addr_t;
 
 
-#define EAFNOSUPPORT   WSAEAFNOSUPPORT 
+//#define EAFNOSUPPORT   WSAEAFNOSUPPORT 
 #define MAX(a,b) (a > b ? a : b)
 #define MIN(a,b) (a < b ? a : b)
 
@@ -105,5 +105,6 @@ typedef struct tuntap_dev {
 
 #define index(a, b) strchr(a, b)
 
+int gettimeofday (struct timeval *tv, void* tz);
 
 #endif

@@ -2,7 +2,9 @@
 #include "n2n_transforms.h"
 #include "n2n.h"
 
+#ifndef WIN32
 #include <sys/time.h>
+#endif
 #include <time.h>
 #include <string.h>
 #include <stdio.h>
