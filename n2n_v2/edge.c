@@ -1065,6 +1065,8 @@ static void update_supernode_reg( n2n_edge_t * eee, time_t nowTime )
 }
 
 
+#define RETRY_INTERVAL 30
+
 
 /* @return 1 if destination is a peer, 0 if destination is supernode */
 static int find_peer_destination(n2n_edge_t * eee,
@@ -1072,9 +1074,11 @@ static int find_peer_destination(n2n_edge_t * eee,
                                  n2n_sock_t * destination)
 {
     const struct peer_info *scan = eee->known_peers;
+	struct peer_info *tryscan = eee->pending_peers;
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
     int retval=0;
+	time_t now = time(NULL);
 
     traceEvent(TRACE_DEBUG, "Searching destination peer for MAC %02X:%02X:%02X:%02X:%02X:%02X",
                mac_address[0] & 0xFF, mac_address[1] & 0xFF, mac_address[2] & 0xFF,
@@ -1098,6 +1102,19 @@ static int find_peer_destination(n2n_edge_t * eee,
 
     if ( 0 == retval )
     {
+		while(tryscan != 0) {
+			if((memcmp(mac_address, tryscan->mac_addr, N2N_MAC_SIZE) == 0) &&
+				(now - tryscan->last_seen > RETRY_INTERVAL))
+			{
+				traceEvent(TRACE_ERROR, "retrying to register peer (%s) -> [%s]",
+					macaddr_str( mac_buf, mac_address),
+					sock_to_cstr( sockbuf, &tryscan->sock));
+				send_register(eee, &tryscan->sock);
+				tryscan->last_seen = now;
+				break;
+			}
+			tryscan = tryscan->next;
+		}
         memcpy(destination, &(eee->supernode), sizeof(struct sockaddr_in));
     }
 
