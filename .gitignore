@@ -8,3 +8,8 @@ edge
 libn2n.a
 supernode
 test
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+~$
+
