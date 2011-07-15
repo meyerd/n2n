@@ -43,6 +43,8 @@
 #define IFACE_UPDATE_INTERVAL           (30) /* sec. How long it usually takes to get an IP lease. */
 #define TRANSOP_TICK_INTERVAL           (10) /* sec */
 
+#define STAT_CALC_INTERVAL				(10) /* sec. Calculate the bps values in roughly this interval steps */
+
 /** maximum length of command line arguments */
 #define MAX_CMDLINE_BUFFER_LENGTH    4096
 
@@ -124,9 +126,17 @@ struct n2n_edge
 
     /* Statistics */
     size_t              tx_p2p;
+	size_t				tx_bit_p2p;
+	size_t				tx_bps_p2p;
     size_t              rx_p2p;
+	size_t				rx_bit_p2p;
+	size_t				rx_bps_p2p;
     size_t              tx_sup;
+	size_t				tx_bit_sup;
+	size_t				tx_bps_sup;
     size_t              rx_sup;
+	size_t				rx_bit_sup;
+	size_t				rx_bps_sup;
 };
 
 /** Return the IP address of the current supernode in the ring. */
@@ -302,6 +312,10 @@ static int edge_init(n2n_edge_t * eee)
     eee->last_p2p = 0;
     eee->last_sup = 0;
     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
+	eee->tx_bit_p2p = 0;
+	eee->tx_bit_sup = 0;
+	eee->rx_bit_p2p = 0;
+	eee->rx_bit_sup = 0;
 
     if(lzo_init() != LZO_E_OK)
     {
@@ -1163,10 +1177,12 @@ static int send_PACKET( n2n_edge_t * eee,
     if ( dest )
     {
         ++(eee->tx_p2p);
+		eee->tx_bit_p2p += pktlen;
     }
     else
     {
         ++(eee->tx_sup);
+		eee->tx_bit_sup += pktlen;
     }
 
     traceEvent( TRACE_INFO, "send_PACKET to %s", sock_to_cstr( sockbuf, &destination ) );
@@ -1386,11 +1402,13 @@ static int handle_PACKET( n2n_edge_t * eee,
     {
         ++(eee->rx_sup);
         eee->last_sup=now;
+		eee->rx_bit_sup += psize;
     }
     else
     {
         ++(eee->rx_p2p);
         eee->last_p2p=now;
+		eee->rx_bit_p2p += psize;
     }
 
     /* Update the sender in peer table entry */
@@ -1613,12 +1631,21 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
                          "uptime %lu\n",
                          time(NULL) - eee->start_time );
 
+	msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
+						"paths  super:(tx),(rx) p2p: (tx),(rx)\n");
     msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-                         "paths  super:%u,%u p2p:%u,%u\n",
+                         "packets      %u,%u     %u,%u\n",
                          (unsigned int)eee->tx_sup,
 			 (unsigned int)eee->rx_sup,
 			 (unsigned int)eee->tx_p2p,
 			 (unsigned int)eee->rx_p2p );
+
+	msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
+						 "byte/s       %u,%u     %u,%u\n",
+						 (unsigned int)eee->tx_bps_sup,
+						 (unsigned int)eee->rx_bps_sup,
+						 (unsigned int)eee->tx_bps_p2p,
+						 (unsigned int)eee->rx_bps_p2p );
 
     msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
                          "trans:null |%6u|%6u|\n"
@@ -2378,6 +2405,8 @@ static int run_loop(n2n_edge_t * eee )
     size_t numPurged;
     time_t lastIfaceCheck=0;
     time_t lastTransop=0;
+	time_t lastStatCalc=0;
+	time_t lastStatCalcDiff;
 
 
 #ifdef WIN32
@@ -2469,6 +2498,20 @@ static int run_loop(n2n_edge_t * eee )
             tuntap_get_address( &(eee->device) );
             lastIfaceCheck = nowTime;
         }
+
+		lastStatCalcDiff = nowTime - lastStatCalc;
+		if(lastStatCalcDiff > STAT_CALC_INTERVAL) {
+			// traceEvent(TRACE_NORMAL, "recalc bps.");
+			eee->tx_bps_p2p = eee->tx_bit_p2p / (size_t)lastStatCalcDiff;
+			eee->tx_bit_p2p = 0;
+			eee->tx_bps_sup = eee->tx_bit_sup / (size_t)lastStatCalcDiff;
+			eee->tx_bit_sup = 0;
+			eee->rx_bps_p2p = eee->rx_bit_p2p / (size_t)lastStatCalcDiff;
+			eee->rx_bit_p2p = 0;
+			eee->rx_bps_sup = eee->rx_bit_sup / (size_t)lastStatCalcDiff;
+			eee->rx_bit_sup = 0;
+			lastStatCalc = nowTime;
+		}
 
     } /* while */
 
