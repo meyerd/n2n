@@ -123,6 +123,9 @@ typedef struct ether_hdr ether_hdr_t;
 #include "win32/wintap.h"
 #endif /* #ifdef WIN32 */
 
+/* include sglib for hash tables */
+#include "sglib.h"
+
 #include "n2n_wire.h"
 
 /* N2N_IFNAMSIZ is needed on win32 even if dev_name is not used after declaration */
@@ -173,6 +176,27 @@ struct peer_info {
     n2n_sock_t          sock;
     time_t              last_seen;
 };
+typedef struct peer_info peer_info_t;
+
+/* sglib hash table defines */
+#define PEER_HASH_TAB_SIZE 50
+
+/* #define PEER_INFO_COMPARATOR(e1, e2)    (\
+	for(int i = 0; i < N2N_MAC_SIZE; i++) {\
+		int8_t tmp = (e1)->mac_addr[i] - (e2)->mac_addr[i]; \
+		if(tmp != 0) \
+			return tmp; \
+	} \
+	return 0; \
+})
+*/
+
+#define PEER_INFO_COMPARATOR(e1, e2) (strncmp((e1)->mac_addr, (e2)->mac_addr, sizeof(n2n_mac_t)))
+
+unsigned int peer_info_t_hash_function(peer_info_t *e);
+
+SGLIB_DEFINE_LIST_PROTOTYPES(peer_info_t, PEER_INFO_COMPARATOR, next)
+SGLIB_DEFINE_HASHED_CONTAINER_PROTOTYPES(peer_info_t, PEER_HASH_TAB_SIZE, peer_info_t_hash_function)
 
 struct n2n_edge; /* defined in edge.c */
 typedef struct n2n_edge         n2n_edge_t;
@@ -238,15 +262,19 @@ void print_n2n_version();
 
 
 /* Operations on peer_info lists. */
-struct peer_info * find_peer_by_mac( struct peer_info * list,
+struct peer_info * find_peer_by_mac( peer_info_t ** list,
                                      const n2n_mac_t mac );
 void   peer_list_add( struct peer_info * * list,
                       struct peer_info * new );
 size_t peer_list_size( const struct peer_info * list );
+size_t hashed_peer_list_t_size(peer_info_t** htab);
 size_t purge_peer_list( struct peer_info ** peer_list, 
                         time_t purge_before );
+size_t purge_hashed_peer_list_t(peer_info_t ** peer_list, time_t purge_before);
 size_t clear_peer_list( struct peer_info ** peer_list );
+size_t clear_hashed_peer_info_t_list(peer_info_t ** peer_list);
 size_t purge_expired_registrations( struct peer_info ** peer_list );
+size_t hashed_purge_expired_registrations(struct peer_info ** peer_list);
 
 /* version.c */
 extern char *n2n_sw_version, *n2n_sw_osName, *n2n_sw_buildDate;

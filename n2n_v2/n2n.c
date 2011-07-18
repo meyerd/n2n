@@ -35,6 +35,27 @@
 #   define REGISTRATION_TIMEOUT           (60*20)
 #endif /* #if defined(DEBUG) */
 
+/* sglib hash table implementation */
+
+SGLIB_DEFINE_LIST_FUNCTIONS(peer_info_t, PEER_INFO_COMPARATOR, next)
+SGLIB_DEFINE_HASHED_CONTAINER_FUNCTIONS(peer_info_t, PEER_HASH_TAB_SIZE, peer_info_t_hash_function)
+
+unsigned int peer_info_t_hash_function(peer_info_t *e) {
+	short i = 0;
+#if N2N_MAC_SIZE > 6
+	#error not implemented yet!
+#else 
+	uint32_t tmp = 0;
+#ifndef WIN32
+#pragma unroll
+#endif
+	for(; i < N2N_MAC_SIZE / 2; i++) {
+		tmp |= (e->mac_addr[i] ^ e->mac_addr[i<<1]) << (N2N_MAC_SIZE / 2 - i - 1);
+	}
+	return tmp;
+#endif
+};
+
 
 const uint8_t broadcast_addr[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 const uint8_t multicast_addr[6] = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0x00 }; /* First 3 bytes are meaningful */
@@ -248,18 +269,12 @@ void print_n2n_version() {
  *
  *  @return NULL if not found; otherwise pointer to peer entry.
  */
-struct peer_info * find_peer_by_mac( struct peer_info * list, const n2n_mac_t mac )
+peer_info_t * find_peer_by_mac( peer_info_t ** list, const n2n_mac_t mac )
 {
-  while(list != NULL)
-    {
-      if( 0 == memcmp(mac, list->mac_addr, 6) )
-        {
-	  return list;
-        }
-      list = list->next;
-    }
+	peer_info_t tmp;
+	memcpy(tmp.mac_addr, mac, sizeof(n2n_mac_t));
 
-  return NULL;
+	return sglib_hashed_peer_info_t_find_member(list, &tmp);
 }
 
 
@@ -279,6 +294,18 @@ size_t peer_list_size( const struct peer_info * list )
   return retval;
 }
 
+size_t hashed_peer_list_t_size(peer_info_t** htab) {
+	peer_info_t									*ll;
+	struct sglib_hashed_peer_info_t_iterator    it;
+	size_t retval = 0;
+
+	for(ll=sglib_hashed_peer_info_t_it_init(&it,htab); ll!=NULL; ll=sglib_hashed_peer_info_t_it_next(&it)) {
+		++retval;
+	}
+
+	return retval;
+}
+
 /** Add new to the head of list. If list is NULL; create it.
  *
  *  The item new is added to the head of the list. New is modified during
@@ -292,8 +319,7 @@ void peer_list_add( struct peer_info * * list,
   *list = new;
 }
 
-
-size_t purge_expired_registrations( struct peer_info ** peer_list ) {
+size_t purge_with_function(struct peer_info ** peer_list, size_t(*purger)(struct peer_info ** peer_list, time_t purge_before)) {
   static time_t last_purge = 0;
   time_t now = time(NULL);
   size_t num_reg = 0;
@@ -349,34 +375,42 @@ size_t purge_peer_list( struct peer_info ** peer_list,
   return retval;
 }
 
-/** Purge all items from the peer_list and return the number of items that were removed. */
-size_t clear_peer_list( struct peer_info ** peer_list )
-{
-    struct peer_info *scan;
-    struct peer_info *prev;
-    size_t retval=0;
+size_t purge_hashed_peer_list_t(peer_info_t ** peer_list, time_t purge_before) {
+	peer_info_t *ll;
+	struct sglib_hashed_peer_info_t_iterator    it;
+	size_t retval = 0;
 
-    scan = *peer_list;
-    prev = NULL;
-    while(scan != NULL)
-    {
-        struct peer_info *next = scan->next;
+	for(ll=sglib_hashed_peer_info_t_it_init(&it,peer_list); ll!=NULL; ll=sglib_hashed_peer_info_t_it_next(&it)) {
+		if(ll->last_seen < purge_before) {
+			++retval;
+			sglib_hashed_peer_info_t_delete(peer_list, ll);
+			free(ll);
+		}
+	}
 
-        if(prev == NULL)
-        {
-            *peer_list = next;
-        }
-        else
-        {
-            prev->next = next;
-        }
+	return retval;
+}
 
-        ++retval;
-        free(scan);
-        scan = next;
-    }
+size_t purge_expired_registrations( struct peer_info ** peer_list ) {
+	return purge_with_function(peer_list, purge_peer_list);
+}
 
-    return retval;
+size_t hashed_purge_expired_registrations(peer_info_t ** peer_list) {
+	return purge_with_function(peer_list, purge_hashed_peer_list_t);
+}
+
+size_t clear_hashed_peer_info_t_list(peer_info_t ** peer_list) {
+	peer_info_t									*ll;
+	struct sglib_hashed_peer_info_t_iterator    it;
+	size_t retval = 0;
+
+	for(ll=sglib_hashed_peer_info_t_it_init(&it,peer_list); ll!=NULL; ll=sglib_hashed_peer_info_t_it_next(&it)) {
+		++retval;
+		sglib_hashed_peer_info_t_delete(peer_list, ll);
+		free(ll);
+	}
+
+	return retval;
 }
 
 static uint8_t hex2byte( const char * s )

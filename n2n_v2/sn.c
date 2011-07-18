@@ -38,7 +38,7 @@ struct n2n_sn
     uint16_t            lport;          /* Local UDP port to bind to. */
     int                 sock;           /* Main socket for UDP traffic with edges. */
     int                 mgmt_sock;      /* management socket. */
-    struct peer_info *  edges;          /* Link list of registered edges. */
+    peer_info_t *		edges[PEER_HASH_TAB_SIZE];          /* Link list of registered edges. */
 };
 
 typedef struct n2n_sn n2n_sn_t;
@@ -70,7 +70,7 @@ static int init_sn( n2n_sn_t * sss )
     sss->lport = N2N_SN_LPORT_DEFAULT;
     sss->sock = -1;
     sss->mgmt_sock = -1;
-    sss->edges = NULL;
+	sglib_hashed_peer_info_t_init(sss->edges);
 
     return 0; /* OK */
 }
@@ -91,7 +91,7 @@ static void deinit_sn( n2n_sn_t * sss )
     }
     sss->mgmt_sock=-1;
 
-    purge_peer_list( &(sss->edges), 0xffffffff );
+    purge_hashed_peer_list_t(sss->edges, 0xffffffff);
 }
 
 
@@ -135,8 +135,7 @@ static int update_edge( n2n_sn_t * sss,
         memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
 
         /* insert this guy at the head of the edges list */
-        scan->next = sss->edges;     /* first in list */
-        sss->edges = scan;           /* head of list points to new scan */
+		sglib_hashed_peer_info_t_add(sss->edges, scan);
 
         traceEvent( TRACE_INFO, "update_edge created   %s ==> %s",
                     macaddr_str( mac_buf, edgeMac ),
@@ -265,30 +264,29 @@ static int try_broadcast( n2n_sn_t * sss,
                           const uint8_t * pktbuf,
                           size_t pktsize )
 {
-    struct peer_info *  scan;
+    peer_info_t *		ll;
+	struct sglib_hashed_peer_info_t_iterator it;
     macstr_t            mac_buf;
     n2n_sock_str_t      sockbuf;
 
     traceEvent( TRACE_DEBUG, "try_broadcast" );
 
-    scan = sss->edges;
-    while(scan != NULL) 
-    {
-        if( 0 == (memcmp(scan->community_name, cmn->community, sizeof(n2n_community_t)) )
-            && (0 != memcmp(srcMac, scan->mac_addr, sizeof(n2n_mac_t)) ) )
+	for(ll=sglib_hashed_peer_info_t_it_init(&it,sss->edges); ll!=NULL; ll=sglib_hashed_peer_info_t_it_next(&it)) {
+        if( 0 == (memcmp(ll->community_name, cmn->community, sizeof(n2n_community_t)) )
+            && (0 != memcmp(srcMac, ll->mac_addr, sizeof(n2n_mac_t)) ) )
             /* REVISIT: exclude if the destination socket is where the packet came from. */
         {
             int data_sent_len;
           
-            data_sent_len = sendto_sock(sss, &(scan->sock), pktbuf, pktsize);
+            data_sent_len = sendto_sock(sss, &(ll->sock), pktbuf, pktsize);
 
             if(data_sent_len != pktsize)
             {
                 ++(sss->stats.errors);
                 traceEvent(TRACE_WARNING, "multicast %lu to [%s] %s failed %s",
                            pktsize,
-                           sock_to_cstr( sockbuf, &(scan->sock) ),
-                           macaddr_str(mac_buf, scan->mac_addr),
+                           sock_to_cstr( sockbuf, &(ll->sock) ),
+                           macaddr_str(mac_buf, ll->mac_addr),
                            strerror(errno));
             }
             else 
@@ -296,13 +294,11 @@ static int try_broadcast( n2n_sn_t * sss,
                 ++(sss->stats.broadcast);
                 traceEvent(TRACE_DEBUG, "multicast %lu to [%s] %s",
                            pktsize,
-                           sock_to_cstr( sockbuf, &(scan->sock) ),
-                           macaddr_str(mac_buf, scan->mac_addr));
+                           sock_to_cstr( sockbuf, &(ll->sock) ),
+                           macaddr_str(mac_buf, ll->mac_addr));
             }
         }
-
-        scan = scan->next;
-    } /* while */
+    } /* for */
     
     return 0;
 }
@@ -328,7 +324,7 @@ static int process_mgmt( n2n_sn_t * sss,
 
     ressize += snprintf( resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize, 
                          "edges     %u\n", 
-			 (unsigned int)peer_list_size( sss->edges ) );
+						 (unsigned int)hashed_peer_list_t_size( sss->edges ));
 
     ressize += snprintf( resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize, 
                          "errors    %u\n", 
@@ -782,7 +778,7 @@ static int run_loop( n2n_sn_t * sss )
             traceEvent( TRACE_DEBUG, "timeout" );
         }
 
-        purge_expired_registrations( &(sss->edges) );
+		hashed_purge_expired_registrations( sss->edges );
 
     } /* while */
 

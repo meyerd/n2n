@@ -39,6 +39,11 @@ typedef unsigned int u_int32_t;
 typedef unsigned short u_int16_t;
 typedef unsigned char u_int8_t;
 
+typedef INT8 int8_t;
+typedef INT16 int16_t;
+typedef INT32 int32_t;
+typedef INT64 int64_t;
+
 typedef int ssize_t;
 #endif /* #ifdef _MSC_VER */
 

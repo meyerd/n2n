@@ -113,8 +113,8 @@ struct n2n_edge
     n2n_trans_op_t      transop[N2N_MAX_TRANSFORMS]; /* one for each transform at fixed positions */
     size_t              tx_transop_idx;         /**< The transop to use when encoding. */
 
-    struct peer_info *  known_peers;            /**< Edges we are connected to. */
-    struct peer_info *  pending_peers;          /**< Edges we have tried to register with. */
+	struct peer_info *  known_peers[PEER_HASH_TAB_SIZE];            /**< Edges we are connected to. */
+    struct peer_info *  pending_peers[PEER_HASH_TAB_SIZE];          /**< Edges we have tried to register with. */
     time_t              last_register_req;      /**< Check if time to re-register with super*/
     size_t              register_lifetime;      /**< Time distance after last_register_req at which to re-register. */
     time_t              last_p2p;               /**< Last time p2p traffic was received. */
@@ -305,8 +305,8 @@ static int edge_init(n2n_edge_t * eee)
     eee->dyn_ip_mode    = 0;
     eee->allow_routing  = 0;
     eee->drop_multicast = 1;
-    eee->known_peers    = NULL;
-    eee->pending_peers  = NULL;
+	sglib_hashed_peer_info_t_init(eee->known_peers);
+	sglib_hashed_peer_info_t_init(eee->pending_peers);
     eee->last_register_req = 0;
     eee->register_lifetime = REGISTER_SUPER_INTERVAL_DFL;
     eee->last_p2p = 0;
@@ -468,8 +468,8 @@ static void edge_deinit(n2n_edge_t * eee)
         closesocket(eee->udp_mgmt_sock);
     }
 
-    clear_peer_list( &(eee->pending_peers) );
-    clear_peer_list( &(eee->known_peers) );
+    clear_hashed_peer_info_t_list( eee->pending_peers );
+    clear_hashed_peer_info_t_list( eee->known_peers );
 
     (eee->transop[N2N_TRANSOP_TF_IDX].deinit)(&eee->transop[N2N_TRANSOP_TF_IDX]);
     (eee->transop[N2N_TRANSOP_NULL_IDX].deinit)(&eee->transop[N2N_TRANSOP_NULL_IDX]);
@@ -738,14 +738,14 @@ void try_send_register( n2n_edge_t * eee,
         scan->sock = *peer;
         scan->last_seen = time(NULL); /* Don't change this it marks the pending peer for removal. */
 
-        peer_list_add( &(eee->pending_peers), scan );
+		sglib_hashed_peer_info_t_add(eee->pending_peers, scan);
 
         traceEvent( TRACE_DEBUG, "=== new pending %s -> %s",
                     macaddr_str( mac_buf, scan->mac_addr ),
                     sock_to_cstr( sockbuf, &(scan->sock) ) );
 
         traceEvent( TRACE_INFO, "Pending peers list size=%u",
-                    (unsigned int)peer_list_size( eee->pending_peers ) );
+			(unsigned int)hashed_peer_list_t_size( eee->pending_peers ) );
 
         /* trace Sending REGISTER */
 
@@ -765,9 +765,10 @@ void check_peer( n2n_edge_t * eee,
                  const n2n_mac_t mac,
                  const n2n_sock_t * peer )
 {
-    struct peer_info * scan = find_peer_by_mac( eee->known_peers, mac );
-
-    if ( NULL == scan )
+	peer_info_t scan;
+	memcpy(scan.mac_addr, mac, sizeof(n2n_mac_t));
+    
+	if (sglib_hashed_peer_info_t_find_member(eee->known_peers, &scan) == NULL)
     {
         /* Not in known_peers - start the REGISTER process. */
         try_send_register( eee, from_supernode, mac, peer );
@@ -790,8 +791,8 @@ void set_peer_operational( n2n_edge_t * eee,
                         const n2n_mac_t mac,
                         const n2n_sock_t * peer )
 {
-    struct peer_info * prev = NULL;
-    struct peer_info * scan;
+    peer_info_t tmp;
+    peer_info_t *scan;
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
 
@@ -799,37 +800,17 @@ void set_peer_operational( n2n_edge_t * eee,
                 macaddr_str( mac_buf, mac),
                 sock_to_cstr( sockbuf, peer ) );
 
-    scan=eee->pending_peers;
+	memcpy(tmp.mac_addr, mac, sizeof(n2n_mac_t));
 
-    while ( NULL != scan )
-    {
-        if ( 0 == memcmp( scan->mac_addr, mac, N2N_MAC_SIZE ) )
-        {
-            break; /* found. */
-        }
+	scan = sglib_hashed_peer_info_t_find_member(eee->pending_peers, &tmp);
 
-        prev = scan;
-        scan = scan->next;
-    }
-
-    if ( scan )
-    {
-
-
+    if(scan) {
         /* Remove scan from pending_peers. */
-        if ( prev )
-        {
-            prev->next = scan->next;
-        }
-        else
-        {
-            eee->pending_peers = scan->next;
-        }
-
+		sglib_hashed_peer_info_t_delete(eee->pending_peers, scan);
+        
         /* Add scan to known_peers. */
-        scan->next = eee->known_peers;
-        eee->known_peers = scan;
-
+		sglib_hashed_peer_info_t_add(eee->known_peers, scan);
+        
         scan->sock = *peer;
 
         traceEvent( TRACE_DEBUG, "=== new peer %s -> %s",
@@ -837,10 +818,10 @@ void set_peer_operational( n2n_edge_t * eee,
                     sock_to_cstr( sockbuf, &(scan->sock) ) );
 
         traceEvent( TRACE_INFO, "Pending peers list size=%u",
-                    (unsigned int)peer_list_size( eee->pending_peers ) );
+                    (unsigned int)hashed_peer_list_t_size( eee->pending_peers ) );
 
         traceEvent( TRACE_INFO, "Operational peers list size=%u",
-                    (unsigned int)peer_list_size( eee->known_peers ) );
+                    (unsigned int)hashed_peer_list_t_size( eee->known_peers ) );
 
 
         scan->last_seen = time(NULL);
@@ -897,7 +878,8 @@ static void update_peer_address(n2n_edge_t * eee,
                                 const n2n_sock_t * peer,
                                 time_t when)
 {
-    struct peer_info *scan = eee->known_peers;
+    peer_info_t *scan = NULL;
+	peer_info_t tmp;
     struct peer_info *prev = NULL; /* use to remove bad registrations. */
     n2n_sock_str_t sockbuf1;
     n2n_sock_str_t sockbuf2; /* don't clobber sockbuf1 if writing two addresses to trace */
@@ -915,19 +897,10 @@ static void update_peer_address(n2n_edge_t * eee,
         return;
     }
 
+	memcpy(tmp.mac_addr, mac, sizeof(n2n_mac_t));
+	scan = sglib_hashed_peer_info_t_find_member(eee->known_peers, &tmp);
 
-    while(scan != NULL)
-    {
-        if(memcmp(mac, scan->mac_addr, N2N_MAC_SIZE) == 0)
-        {
-            break;
-        }
-
-        prev = scan;
-        scan = scan->next;
-    }
-
-    if ( NULL == scan )
+    if ( scan == NULL )
     {
         /* Not in known_peers. */
         return;
@@ -944,15 +917,7 @@ static void update_peer_address(n2n_edge_t * eee,
 
             /* The peer has changed public socket. It can no longer be assumed to be reachable. */
             /* Remove the peer. */
-            if ( NULL == prev )
-            {
-                /* scan was head of list */
-                eee->known_peers = scan->next;
-            }
-            else
-            {
-                prev->next = scan->next;
-            }
+			sglib_hashed_peer_info_t_delete(eee->known_peers, scan);
             free(scan);
 
             try_send_register( eee, from_supernode, mac, peer );
@@ -1087,8 +1052,9 @@ static int find_peer_destination(n2n_edge_t * eee,
                                  n2n_mac_t mac_address,
                                  n2n_sock_t * destination)
 {
-    const struct peer_info *scan = eee->known_peers;
-	struct peer_info *tryscan = eee->pending_peers;
+	peer_info_t tmp;
+	peer_info_t* scan = NULL;
+	peer_info_t* tryscan = NULL;
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
     int retval=0;
@@ -1098,36 +1064,26 @@ static int find_peer_destination(n2n_edge_t * eee,
                mac_address[0] & 0xFF, mac_address[1] & 0xFF, mac_address[2] & 0xFF,
                mac_address[3] & 0xFF, mac_address[4] & 0xFF, mac_address[5] & 0xFF);
 
-    while(scan != NULL) {
-        traceEvent(TRACE_DEBUG, "Evaluating peer [MAC=%02X:%02X:%02X:%02X:%02X:%02X]",
-                   scan->mac_addr[0] & 0xFF, scan->mac_addr[1] & 0xFF, scan->mac_addr[2] & 0xFF,
-                   scan->mac_addr[3] & 0xFF, scan->mac_addr[4] & 0xFF, scan->mac_addr[5] & 0xFF
-            );
-
-        if((scan->last_seen > 0) &&
-           (memcmp(mac_address, scan->mac_addr, N2N_MAC_SIZE) == 0))
-        {
-            memcpy(destination, &scan->sock, sizeof(n2n_sock_t));
-            retval=1;
-            break;
-        }
-        scan = scan->next;
-    }
-
+	memcpy(tmp.mac_addr, mac_address, sizeof(n2n_mac_t));
+	scan = sglib_hashed_peer_info_t_find_member(eee->known_peers, &tmp);
+	if(scan) {
+		if(scan->last_seen > 0) {
+			memcpy(destination, &scan->sock, sizeof(n2n_sock_t));
+			retval = 1;
+		}
+	}
+    
     if ( 0 == retval )
     {
-		while(tryscan != 0) {
-			if((memcmp(mac_address, tryscan->mac_addr, N2N_MAC_SIZE) == 0) &&
-				(now - tryscan->last_seen > RETRY_INTERVAL))
-			{
-				traceEvent(TRACE_ERROR, "retrying to register peer (%s) -> [%s]",
+		tryscan = sglib_hashed_peer_info_t_find_member(eee->pending_peers, &tmp);
+		if(tryscan) {
+			if(now - tryscan->last_seen > RETRY_INTERVAL) {
+				traceEvent(TRACE_INFO, "retrying to register peer (%s) -> [%s]",
 					macaddr_str( mac_buf, mac_address),
 					sock_to_cstr( sockbuf, &tryscan->sock));
 				send_register(eee, &tryscan->sock);
 				tryscan->last_seen = now;
-				break;
 			}
-			tryscan = tryscan->next;
 		}
         memcpy(destination, &(eee->supernode), sizeof(struct sockaddr_in));
     }
@@ -1463,12 +1419,13 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
     time_t              now;
 	macstr_t			mac_buf;
 	n2n_sock_str_t		sockbuf;
-	struct peer_info *	lpi;
+	peer_info_t *		lpi = NULL;
+	struct sglib_hashed_peer_info_t_iterator    it;
 	int					c;
 
     now = time(NULL);
     i = sizeof(sender_sock);
-    recvlen=recvfrom(eee->udp_mgmt_sock, udp_buf, N2N_PKT_BUF_SIZE, 0/*flags*/,
+    recvlen = recvfrom(eee->udp_mgmt_sock, udp_buf, N2N_PKT_BUF_SIZE, 0/*flags*/,
 		     (struct sockaddr *)&sender_sock, (socklen_t*)&i);
 
     if ( recvlen < 0 )
@@ -1561,10 +1518,8 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
 			sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0,
 				(struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
 
-			lpi = eee->known_peers;
 			c = 0;
-			while( lpi != NULL )
-			{
+			for(lpi=sglib_hashed_peer_info_t_it_init(&it,eee->known_peers); lpi!=NULL; lpi=sglib_hashed_peer_info_t_it_next(&it)) {
 				c++;
 				msg_len = 0;
 				msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
@@ -1573,7 +1528,6 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
 						lpi->last_seen);
 				sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0,
 					(struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
-				lpi = lpi->next;
 			}
 
 			msg_len = 0;
@@ -1583,10 +1537,8 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
 			sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0,
 				(struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
 
-			lpi = eee->pending_peers;
 			c = 0;
-			while( lpi != NULL )
-			{
+			for(lpi=sglib_hashed_peer_info_t_it_init(&it,eee->pending_peers); lpi!=NULL; lpi=sglib_hashed_peer_info_t_it_next(&it)) {
 				c++;
 				msg_len = 0;
 				msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
@@ -1595,7 +1547,6 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
 						lpi->last_seen);
 				sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0,
 					(struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
-				lpi = lpi->next;
 			}
 
 			return;
@@ -1660,12 +1611,12 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
 
     msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
                          "peers  pend:%u full:%u\n",
-                         (unsigned int)peer_list_size( eee->pending_peers ), 
-			 (unsigned int)peer_list_size( eee->known_peers ) );
+                         (unsigned int)hashed_peer_list_t_size( eee->pending_peers ), 
+			 (unsigned int)hashed_peer_list_t_size( eee->known_peers ) );
 
     msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
                          "last   super:%lu(%ld sec ago) p2p:%lu(%ld sec ago)\n",
-                         eee->last_sup, (now-eee->last_sup), eee->last_p2p, (now-eee->last_p2p) );
+                         eee->last_sup, (now - eee->last_sup), eee->last_p2p, (now - eee->last_p2p) );
 
     traceEvent(TRACE_DEBUG, "mgmt status sending: %s", udp_buf );
 
@@ -1700,7 +1651,7 @@ static void readFromIPSocket( n2n_edge_t * eee )
     size_t              i;
 
     i = sizeof(sender_sock);
-    recvlen=recvfrom(eee->udp_sock, udp_buf, N2N_PKT_BUF_SIZE, 0/*flags*/,
+    recvlen = recvfrom(eee->udp_sock, udp_buf, N2N_PKT_BUF_SIZE, 0/*flags*/,
                      (struct sockaddr *)&sender_sock, (socklen_t*)&i);
 
     if ( recvlen < 0 )
@@ -2482,13 +2433,13 @@ static int run_loop(n2n_edge_t * eee )
 
         update_supernode_reg(eee, nowTime);
 
-        numPurged =  purge_expired_registrations( &(eee->known_peers) );
-        numPurged += purge_expired_registrations( &(eee->pending_peers) );
+        numPurged =  hashed_purge_expired_registrations( eee->known_peers );
+        numPurged += hashed_purge_expired_registrations( eee->pending_peers );
         if ( numPurged > 0 )
         {
             traceEvent( TRACE_NORMAL, "Peer removed: pending=%u, operational=%u",
-                        (unsigned int)peer_list_size( eee->pending_peers ), 
-                        (unsigned int)peer_list_size( eee->known_peers ) );
+                        (unsigned int)hashed_peer_list_t_size( eee->pending_peers ), 
+                        (unsigned int)hashed_peer_list_t_size( eee->known_peers ) );
         }
 
         if ( eee->dyn_ip_mode && 
