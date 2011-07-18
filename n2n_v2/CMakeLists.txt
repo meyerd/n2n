@@ -93,6 +93,9 @@ target_link_libraries(test n2n)
 add_executable(benchmark benchmark.c)
 target_link_libraries(benchmark n2n)
 
+add_executable(benchmark_hashtable benchmark_hashtable.c)
+target_link_libraries(benchmark_hashtable n2n)
+
 install(TARGETS edge supernode
         RUNTIME DESTINATION sbin
         LIBRARY DESTINATION lib
