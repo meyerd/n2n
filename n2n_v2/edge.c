@@ -1782,6 +1782,7 @@ static void readFromIPSocket( n2n_edge_t * eee )
                                    sock_to_cstr(sockbuf1, &(ra.sn_bak) ) );
                     }
 
+                    eee->last_p2p = now;
                     eee->last_sup = now;
                     eee->sn_wait=0;
                     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
