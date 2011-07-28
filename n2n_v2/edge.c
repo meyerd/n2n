@@ -1457,6 +1457,7 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
                                  "  -verb   Decrease verbosity of logging\n"
 								 "  peers   List table of known peers\n"
                                  "  reload  Re-read the keyschedule\n"
+                                 "  mangle_peer mac ip [port] mangle peer\n"
                                  "  <enter> Display statistics\n\n");
 
             sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
@@ -1569,6 +1570,40 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
                 }
                 return;
             }
+        }
+    }
+    if ( recvlen >= 12 )
+    {
+        if ( 0 == memcmp (udp_buf, "mangle_peer ", 12) )
+        {
+            int j, n_matched;
+            n2n_mac_t target_mac;
+            unsigned int mac[6];
+            int ip[4];
+            int port;
+            struct peer_info * scan;
+
+            udp_buf[recvlen] = 0;
+            n_matched = sscanf((const char *) udp_buf,
+                    "mangle_peer %x:%x:%x:%x:%x:%x %d.%d.%d.%d %d", mac, mac+1,
+                    mac+2, mac+3, mac+4, mac+5, ip, ip+1, ip+2, ip+3, &port);
+            for( j=0; j<6; j++ )
+                target_mac[j] = (uint8_t) mac[j];
+            scan = find_peer_by_mac( eee->pending_peers, target_mac );
+            if (NULL != scan && n_matched >= 10) {
+                scan->sock.family = AF_INET;
+                printf("n_matched: %d, port: %d\n", n_matched, port);
+                if (n_matched >= 11 && port > 0)
+                    scan->sock.port = (uint16_t) port;
+                for( j=0; j<4; j++)
+                    scan->sock.addr.v4[j] = (uint8_t) ip[j];
+                sendto( eee->udp_mgmt_sock, "success\n", 9, 0,
+                        (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
+            } else {
+                sendto( eee->udp_mgmt_sock, "failure\n", 9, 0,
+                        (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
+            }
+            return;
         }
     }
 
