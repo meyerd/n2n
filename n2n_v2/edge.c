@@ -596,6 +596,12 @@ static void send_register( n2n_edge_t * eee,
     idx=0;
     encode_mac( reg.srcMac, &idx, eee->device.mac_addr );
 
+    /* include local socket if a local address was given */
+    if(eee->local_sock_ena) {
+        cmn.flags |= N2N_FLAGS_LOCAL_SOCKET;
+        reg.local_sock = eee->local_sock;
+    }
+
     idx=0;
     encode_REGISTER( pktbuf, &idx, &cmn, &reg );
 
@@ -705,11 +711,13 @@ static void update_peer_address(n2n_edge_t * eee,
 void check_peer( n2n_edge_t * eee,
                  uint8_t from_supernode,
                  const n2n_mac_t mac,
-                 const n2n_sock_t * peer );
+                 const n2n_sock_t * peer,
+                 const n2n_sock_t * remote_local_sock );
 void try_send_register( n2n_edge_t * eee,
                         uint8_t from_supernode,
                         const n2n_mac_t mac,
-                        const n2n_sock_t * peer );
+                        const n2n_sock_t * peer,
+                        const n2n_sock_t * remote_local_sock );
 void set_peer_operational( n2n_edge_t * eee,
                            const n2n_mac_t mac,
                            const n2n_sock_t * peer );
@@ -732,7 +740,8 @@ void set_peer_operational( n2n_edge_t * eee,
 void try_send_register( n2n_edge_t * eee,
                         uint8_t from_supernode,
                         const n2n_mac_t mac,
-                        const n2n_sock_t * peer )
+                        const n2n_sock_t * peer,
+                        const n2n_sock_t * remote_local_sock )
 {
     /* REVISIT: purge of pending_peers not yet done. */
     struct peer_info * scan = find_peer_by_mac( eee->pending_peers, mac );
@@ -746,6 +755,10 @@ void try_send_register( n2n_edge_t * eee,
         memcpy(scan->mac_addr, mac, N2N_MAC_SIZE);
         scan->sock = *peer;
         scan->last_seen = time(NULL); /* Don't change this it marks the pending peer for removal. */
+        if( remote_local_sock ) {
+            scan->local_sock = (n2n_sock_t *) malloc(sizeof(n2n_sock_t));
+            (*scan->local_sock) = *remote_local_sock;
+        }
 
 		sglib_hashed_peer_info_t_add(eee->pending_peers, scan);
 
@@ -759,6 +772,8 @@ void try_send_register( n2n_edge_t * eee,
         /* trace Sending REGISTER */
 
         send_register(eee, &(scan->sock) );
+        if( scan->local_sock )
+            send_register(eee, scan->local_sock );
 
         /* pending_peers now owns scan. */
     }
@@ -772,7 +787,8 @@ void try_send_register( n2n_edge_t * eee,
 void check_peer( n2n_edge_t * eee,
                  uint8_t from_supernode,
                  const n2n_mac_t mac,
-                 const n2n_sock_t * peer )
+                 const n2n_sock_t * peer,
+                 const n2n_sock_t * remote_local_sock )
 {
 	peer_info_t scan;
 	memcpy(scan.mac_addr, mac, sizeof(n2n_mac_t));
@@ -780,7 +796,7 @@ void check_peer( n2n_edge_t * eee,
 	if (sglib_hashed_peer_info_t_find_member(eee->known_peers, &scan) == NULL)
     {
         /* Not in known_peers - start the REGISTER process. */
-        try_send_register( eee, from_supernode, mac, peer );
+        try_send_register( eee, from_supernode, mac, peer, remote_local_sock );
     }
     else
     {
@@ -816,9 +832,13 @@ void set_peer_operational( n2n_edge_t * eee,
     if(scan) {
         /* Remove scan from pending_peers. */
 		sglib_hashed_peer_info_t_delete(eee->pending_peers, scan);
+        /* remove local address, not needed for an operational peer */
+        free(scan->local_sock);
+        scan->local_sock = NULL;
         
         /* Add scan to known_peers. */
 		sglib_hashed_peer_info_t_add(eee->known_peers, scan);
+
         
         scan->sock = *peer;
 
@@ -929,7 +949,7 @@ static void update_peer_address(n2n_edge_t * eee,
 			sglib_hashed_peer_info_t_delete(eee->known_peers, scan);
             free(scan);
 
-            try_send_register( eee, from_supernode, mac, peer );
+            try_send_register( eee, from_supernode, mac, peer, NULL );
         }
         else
         {
@@ -1091,6 +1111,8 @@ static int find_peer_destination(n2n_edge_t * eee,
 					macaddr_str( mac_buf, mac_address),
 					sock_to_cstr( sockbuf, &tryscan->sock));
 				send_register(eee, &tryscan->sock);
+                if ( tryscan->local_sock )
+                    send_register(eee, tryscan->local_sock);
 				tryscan->last_seen = now;
 			}
 		}
@@ -1378,7 +1400,7 @@ static int handle_PACKET( n2n_edge_t * eee,
     }
 
     /* Update the sender in peer table entry */
-    check_peer( eee, from_supernode, pkt->srcMac, orig_sender );
+    check_peer( eee, from_supernode, pkt->srcMac, orig_sender, NULL );
 
     /* Handle transform. */
     {
@@ -1679,6 +1701,7 @@ static void readFromIPSocket( n2n_edge_t * eee )
 
     n2n_sock_str_t      sockbuf1;
     n2n_sock_str_t      sockbuf2; /* don't clobber sockbuf1 if writing two addresses to trace */
+    n2n_sock_str_t      sockbuf3; /* don't clobber sockbuf1 if writing two addresses to trace */
     macstr_t            mac_buf1;
     macstr_t            mac_buf2;
 
@@ -1758,23 +1781,33 @@ static void readFromIPSocket( n2n_edge_t * eee )
         {
             /* Another edge is registering with us */
             n2n_REGISTER_t reg;
+            n2n_sock_t * remote_local_sock;
 
             decode_REGISTER( &reg, &cmn, udp_buf, &rem, &idx );
 
-            if ( reg.sock.family )
+            if ( cmn.flags & N2N_FLAGS_SOCKET )
             {
                 orig_sender = &(reg.sock);
             }
+            if ( cmn.flags & N2N_FLAGS_LOCAL_SOCKET ) {
+                remote_local_sock = &(reg.local_sock);
+                sock_to_cstr(sockbuf3, remote_local_sock);
+            } else {
+                remote_local_sock = NULL;
+                sockbuf3[0] = '\0';
+            }
 
-            traceEvent(TRACE_INFO, "Rx REGISTER src=%s dst=%s from peer %s (%s)",
+            traceEvent(TRACE_INFO, "Rx REGISTER src=%s dst=%s from peer %s "
+                    "(sn: %s, local: %s)",
                        macaddr_str( mac_buf1, reg.srcMac ),
                        macaddr_str( mac_buf2, reg.dstMac ),
                        sock_to_cstr(sockbuf1, &sender),
-                       sock_to_cstr(sockbuf2, orig_sender) );
+                       sock_to_cstr(sockbuf2, orig_sender),
+                       (char *) sockbuf3);
 
             if ( 0 == memcmp(reg.dstMac, (eee->device.mac_addr), 6) )
             {
-                check_peer( eee, from_supernode, reg.srcMac, orig_sender );
+                check_peer( eee, from_supernode, reg.srcMac, orig_sender, remote_local_sock );
             }
 
             send_register_ack(eee, orig_sender, &reg);
