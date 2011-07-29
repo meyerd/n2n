@@ -245,9 +245,13 @@ int encode_REGISTER( uint8_t * base,
     retval += encode_buf( base, idx, reg->cookie, N2N_COOKIE_SIZE );
     retval += encode_mac( base, idx, reg->srcMac );
     retval += encode_mac( base, idx, reg->dstMac );
-    if ( 0 != reg->sock.family )
+    if ( common->flags & N2N_FLAGS_SOCKET )
     {
         retval += encode_sock( base, idx, &(reg->sock) );
+    }
+    if ( common->flags & N2N_FLAGS_LOCAL_SOCKET )
+    {
+        retval += encode_sock( base, idx, &(reg->local_sock) );
     }
 
     return retval;
@@ -268,6 +272,11 @@ int decode_REGISTER( n2n_REGISTER_t * reg,
     if ( cmn->flags & N2N_FLAGS_SOCKET )
     {
         retval += decode_sock( &(reg->sock), base, rem, idx );
+    }
+
+    if ( cmn->flags & N2N_FLAGS_LOCAL_SOCKET )
+    {
+        retval += decode_sock( &(reg->local_sock), base, rem, idx );
     }
 
     return retval;

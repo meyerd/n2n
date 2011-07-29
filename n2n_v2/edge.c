@@ -580,17 +580,17 @@ static void send_register( n2n_edge_t * eee,
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx;
     ssize_t sent;
-    n2n_common_t cmn;
-    n2n_REGISTER_t reg;
+    n2n_common_t cmn = {0};
+    n2n_REGISTER_t reg = {0};
     n2n_sock_str_t sockbuf;
 
-    memset(&cmn, 0, sizeof(cmn) );
-    memset(&reg, 0, sizeof(reg) );
     cmn.ttl=N2N_DEFAULT_TTL;
     cmn.pc = n2n_register;
     cmn.flags = 0;
     memcpy( cmn.community, eee->community_name, N2N_COMMUNITY_SIZE );
 
+    /* NOTE: Encoding should probably not be done here but in 
+     * encode_REGISTER (lukas) */
     idx=0;
     encode_uint32( reg.cookie, &idx, 123456789 );
     idx=0;
