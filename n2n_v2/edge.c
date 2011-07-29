@@ -78,8 +78,10 @@
 /* ******************************************************* */
 
 #define N2N_EDGE_SN_HOST_SIZE 48
+#define N2N_EDGE_LOCAL_IP_SIZE 48
 
 typedef char n2n_sn_name_t[N2N_EDGE_SN_HOST_SIZE];
+typedef char n2n_local_ip_t[N2N_EDGE_LOCAL_IP_SIZE];
 
 #define N2N_EDGE_NUM_SUPERNODES 2
 #define N2N_EDGE_SUP_ATTEMPTS   3       /* Number of failed attmpts before moving on to next supernode. */
@@ -92,10 +94,13 @@ struct n2n_edge
     uint8_t             re_resolve_supernode_ip;
 
     n2n_sock_t          supernode;
+    n2n_sock_t          local_sock;
 
     size_t              sn_idx;                 /**< Currently active supernode. */
     size_t              sn_num;                 /**< Number of supernode addresses defined. */
     n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
+    n2n_local_ip_t      local_ip_str;          /** storing a local ip socket */
+    int                 local_sock_ena;        /** > 0 if local_sock is enabled */
     int                 sn_wait;                /**< Whether we are waiting for a supernode response. */
 
     n2n_community_t     community_name;         /**< The community. 16 full octets. */
@@ -147,6 +152,8 @@ static const char * supernode_ip( const n2n_edge_t * eee )
 
 
 static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addr);
+static int localip2addr(n2n_sock_t * l_ip,
+        const n2n_local_ip_t local_ip_strIn, int local_port);
 
 static void send_packet2net(n2n_edge_t * eee,
 			    uint8_t *decrypted_msg, size_t len);
@@ -305,6 +312,7 @@ static int edge_init(n2n_edge_t * eee)
     eee->dyn_ip_mode    = 0;
     eee->allow_routing  = 0;
     eee->drop_multicast = 1;
+    eee->local_sock_ena = 0;
 	sglib_hashed_peer_info_t_init(eee->known_peers);
 	sglib_hashed_peer_info_t_init(eee->pending_peers);
     eee->last_register_req = 0;
@@ -1106,6 +1114,7 @@ static const struct option long_options[] = {
   { "tun-device",      required_argument, NULL, 'd' },
   { "euid",            required_argument, NULL, 'u' },
   { "egid",            required_argument, NULL, 'g' },
+  { "local-ip",        required_argument, NULL, 'i' },
   { "help"   ,         no_argument,       NULL, 'h' },
   { "verbose",         no_argument,       NULL, 'v' },
   { NULL,              0,                 NULL,  0  }
@@ -1948,6 +1957,36 @@ static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn)
         traceEvent(TRACE_WARNING, "Wrong supernode parameter (-l <host:port>)");
 }
 
+/** Decode local address string (given on command line)
+ */
+static int localip2addr(n2n_sock_t * l_ip,
+        const n2n_local_ip_t local_ip_str, int local_port)
+{
+    /* TODO: IPv6? */
+    unsigned int ip[4];
+    int i, n_matches;
+
+    n_matches = sscanf( local_ip_str, "%u.%u.%u.%u", &ip[0], &ip[1], &ip[2],
+            &ip[3]);
+
+    if( n_matches != 4) {
+        traceEvent(TRACE_WARNING, "Wrong local_ip parameter (-i ip), disabled");
+        return 0;
+    }
+
+    for( i=0; i < 4; i++ ) {
+        if( ip[i] > 255 ) {
+            traceEvent(TRACE_WARNING, "Invalid local_ip address (-i ip), disabled");
+            return 0;
+        }
+    }
+    l_ip->family = AF_INET;
+    l_ip->port = local_port;
+    for( i = 0; i < 4; i++ )
+        l_ip->addr.v4[i] = ip[i];
+    return 1;
+}
+
 /* ***************************************************** */
 
 
@@ -2037,6 +2076,10 @@ int main(int argc, char* argv[])
     char ** effectiveargv=NULL;
     char  * linebuffer = NULL;
 
+    n2n_sock_str_t local_sockbuf;
+    struct sockaddr_in sa;
+    socklen_t sa_len;
+
     n2n_edge_t eee; /* single instance for this program */
 
     if (-1 == edge_init(&eee) )
@@ -2104,7 +2147,7 @@ int main(int argc, char* argv[])
     optarg = NULL;
     while((opt = getopt_long(effectiveargc,
                              effectiveargv,
-                             "K:k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:", long_options, NULL)) != EOF)
+                             "K:k:a:bc:Eu:g:m:M:s:d:l:i:p:fvhrt:", long_options, NULL)) != EOF)
     {
         switch (opt)
         {
@@ -2207,6 +2250,16 @@ int main(int argc, char* argv[])
                 fprintf(stderr, "Too many supernodes!\n" );
                 exit(1);
             }
+            break;
+        }
+
+        case 'i': /* local ip */
+        {
+            eee.local_sock_ena = 1;
+            strncpy( eee.local_ip_str, optarg, N2N_EDGE_LOCAL_IP_SIZE);
+            if ( N2N_EDGE_LOCAL_IP_SIZE > 0 )
+                eee.local_ip_str[N2N_EDGE_LOCAL_IP_SIZE - 1] = '\0';
+            traceEvent(TRACE_DEBUG, "Storing local_ip_str = %s\n", (eee.sn_ip_array[eee.sn_num]) );
             break;
         }
 
@@ -2368,6 +2421,22 @@ int main(int argc, char* argv[])
     {
         traceEvent( TRACE_ERROR, "Failed to bind main UDP port %u", (signed int)local_port );
         return(-1);
+    }
+
+
+    if(eee.local_sock_ena) {
+        sa_len = sizeof(sa);
+        if ( getsockname(eee.udp_sock, (struct sockaddr *) &sa, &sa_len) == -1 ) {
+            traceEvent( TRACE_ERROR, "getsockname() failed" );
+            return(-1);
+        }
+        local_port = ntohs(sa.sin_port);
+        memset(&(eee.local_sock), 0, sizeof(eee.local_sock));
+
+        if ( (eee.local_sock_ena = localip2addr( &(eee.local_sock),
+                        eee.local_ip_str, local_port ) ) )
+            traceEvent(TRACE_NORMAL, "Local Socket is %s",
+                    sock_to_cstr( local_sockbuf, &(eee.local_sock) ) );
     }
 
     eee.udp_mgmt_sock = open_socket(mgmt_port, 0 /* bind LOOPBACK*/ );
