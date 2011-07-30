@@ -553,7 +553,6 @@ static ssize_t sendto_sock( int fd, const void * buf, size_t len, const n2n_sock
     n2n_sock_str_t sockbuf;
     struct sockaddr_in peer_addr;
     ssize_t sent;
-    int* br = NULL;
 
     fill_sockaddr( (struct sockaddr *) &peer_addr,
                    sizeof(peer_addr),
@@ -566,7 +565,6 @@ static ssize_t sendto_sock( int fd, const void * buf, size_t len, const n2n_sock
         char * c = strerror(errno);
         traceEvent( TRACE_ERROR, "sendto %s failed (%d) %s",
                 sock_to_cstr( sockbuf, dest ), errno, c );
-        *br = 1; //segfault!
     }
     else
     {
