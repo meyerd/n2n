@@ -118,7 +118,6 @@ struct n2n_REGISTER
     n2n_mac_t           srcMac;         /* MAC of registering party */
     n2n_mac_t           dstMac;         /* MAC of target edge */
     n2n_sock_t          sock;           /* when relaying by supernode */
-    n2n_sock_t          local_sock;     /* for behind-same-nat problem */
 };
 
 typedef struct n2n_REGISTER n2n_REGISTER_t;
@@ -138,6 +137,7 @@ struct n2n_PACKET
     n2n_mac_t           srcMac;
     n2n_mac_t           dstMac;
     n2n_sock_t          sock;
+    n2n_sock_t          local_sock;     /* for behind-same-nat problem */
     n2n_transform_t     transform;
 };
 

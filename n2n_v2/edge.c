@@ -550,8 +550,10 @@ static void help() {
 /** Send a datagram to a socket defined by a n2n_sock_t */
 static ssize_t sendto_sock( int fd, const void * buf, size_t len, const n2n_sock_t * dest )
 {
+    n2n_sock_str_t sockbuf;
     struct sockaddr_in peer_addr;
     ssize_t sent;
+    int* br = NULL;
 
     fill_sockaddr( (struct sockaddr *) &peer_addr,
                    sizeof(peer_addr),
@@ -562,7 +564,9 @@ static ssize_t sendto_sock( int fd, const void * buf, size_t len, const n2n_sock
     if ( sent < 0 )
     {
         char * c = strerror(errno);
-        traceEvent( TRACE_ERROR, "sendto failed (%d) %s", errno, c );
+        traceEvent( TRACE_ERROR, "sendto %s failed (%d) %s",
+                sock_to_cstr( sockbuf, dest ), errno, c );
+        *br = 1; //segfault!
     }
     else
     {
@@ -595,12 +599,6 @@ static void send_register( n2n_edge_t * eee,
     encode_uint32( reg.cookie, &idx, 123456789 );
     idx=0;
     encode_mac( reg.srcMac, &idx, eee->device.mac_addr );
-
-    /* include local socket if a local address was given */
-    if(eee->local_sock_ena) {
-        cmn.flags |= N2N_FLAGS_LOCAL_SOCKET;
-        reg.local_sock = eee->local_sock;
-    }
 
     idx=0;
     encode_REGISTER( pktbuf, &idx, &cmn, &reg );
@@ -772,8 +770,9 @@ void try_send_register( n2n_edge_t * eee,
         /* trace Sending REGISTER */
 
         send_register(eee, &(scan->sock) );
-        if( scan->local_sock )
+        if( scan->local_sock ) {
             send_register(eee, scan->local_sock );
+        }
 
         /* pending_peers now owns scan. */
     }
@@ -1151,31 +1150,18 @@ static const struct option long_options[] = {
 static int send_PACKET( n2n_edge_t * eee,
                         n2n_mac_t dstMac,
                         const uint8_t * pktbuf,
-                        size_t pktlen )
+                        size_t pktlen,
+                        n2n_sock_t * destination)
 {
-    int dest;
     ssize_t s;
     n2n_sock_str_t sockbuf;
-    n2n_sock_t destination;
 
     /* hexdump( pktbuf, pktlen ); */
 
-    dest = find_peer_destination(eee, dstMac, &destination);
 
-    if ( dest )
-    {
-        ++(eee->tx_p2p);
-		eee->tx_bit_p2p += pktlen;
-    }
-    else
-    {
-        ++(eee->tx_sup);
-		eee->tx_bit_sup += pktlen;
-    }
+    traceEvent( TRACE_INFO, "send_PACKET to %s", sock_to_cstr( sockbuf, destination ) );
 
-    traceEvent( TRACE_INFO, "send_PACKET to %s", sock_to_cstr( sockbuf, &destination ) );
-
-    s = sendto_sock( eee->udp_sock, pktbuf, pktlen, &destination );
+    s = sendto_sock( eee->udp_sock, pktbuf, pktlen, destination );
 
     return 0;
 }
@@ -1216,6 +1202,9 @@ static void send_packet2net(n2n_edge_t * eee,
 
     ether_hdr_t eh;
 
+    int dest;
+    n2n_sock_t destination;
+
     /* tap_pkt is not aligned so we have to copy to aligned memory */
     memcpy( &eh, tap_pkt, sizeof(ether_hdr_t) );
 
@@ -1252,13 +1241,20 @@ static void send_packet2net(n2n_edge_t * eee,
     cmn.flags=0; /* no options, not from supernode, no socket */
     memcpy( cmn.community, eee->community_name, N2N_COMMUNITY_SIZE );
 
+    dest = find_peer_destination(eee, destMac, &destination);
+
     memset( &pkt, 0, sizeof(pkt) );
     memcpy( pkt.srcMac, eee->device.mac_addr, N2N_MAC_SIZE);
     memcpy( pkt.dstMac, destMac, N2N_MAC_SIZE);
 
+    if(!dest && eee->local_sock_ena) {
+        /* sent via supernode, so we add local socket if present*/
+        cmn.flags |= N2N_FLAGS_LOCAL_SOCKET;
+        pkt.local_sock = eee->local_sock;
+    }
+
     tx_transop_idx = edge_choose_tx_transop( eee );
 
-    pkt.sock.family=0; /* do not encode sock */
     pkt.transform = eee->transop[tx_transop_idx].transform_id;
 
     idx=0;
@@ -1271,7 +1267,17 @@ static void send_packet2net(n2n_edge_t * eee,
                                              tap_pkt, len );
     ++(eee->transop[tx_transop_idx].tx_cnt); /* stats */
 
-    send_PACKET( eee, destMac, pktbuf, idx ); /* to peer or supernode */
+    if ( dest )
+    {
+        ++(eee->tx_p2p);
+		eee->tx_bit_p2p += idx;
+    }
+    else
+    {
+        ++(eee->tx_sup);
+		eee->tx_bit_sup += idx;
+    }
+    send_PACKET( eee, destMac, pktbuf, idx, &destination);
 }
 
 
@@ -1369,6 +1375,7 @@ static int handle_PACKET( n2n_edge_t * eee,
                           const n2n_common_t * cmn,
                           const n2n_PACKET_t * pkt,
                           const n2n_sock_t * orig_sender,
+                          const n2n_sock_t * remote_local_sock,
                           uint8_t * payload,
                           size_t psize )
 {
@@ -1400,7 +1407,8 @@ static int handle_PACKET( n2n_edge_t * eee,
     }
 
     /* Update the sender in peer table entry */
-    check_peer( eee, from_supernode, pkt->srcMac, orig_sender, NULL );
+    check_peer( eee, from_supernode, pkt->srcMac, orig_sender,
+            remote_local_sock );
 
     /* Handle transform. */
     {
@@ -1701,7 +1709,6 @@ static void readFromIPSocket( n2n_edge_t * eee )
 
     n2n_sock_str_t      sockbuf1;
     n2n_sock_str_t      sockbuf2; /* don't clobber sockbuf1 if writing two addresses to trace */
-    n2n_sock_str_t      sockbuf3; /* don't clobber sockbuf1 if writing two addresses to trace */
     macstr_t            mac_buf1;
     macstr_t            mac_buf2;
 
@@ -1763,25 +1770,32 @@ static void readFromIPSocket( n2n_edge_t * eee )
         {
             /* process PACKET - most frequent so first in list. */
             n2n_PACKET_t pkt;
+            n2n_sock_t * remote_local_sock;
 
             decode_PACKET( &pkt, &cmn, udp_buf, &rem, &idx );
 
-            if ( pkt.sock.family )
+            if ( cmn.flags & N2N_FLAGS_SOCKET )
             {
                 orig_sender = &(pkt.sock);
+            }
+            if ( cmn.flags & N2N_FLAGS_LOCAL_SOCKET )
+            {
+                remote_local_sock = &(pkt.local_sock);
+            } else {
+                remote_local_sock = NULL;
             }
 
             traceEvent(TRACE_INFO, "Rx PACKET from %s (%s)",
                        sock_to_cstr(sockbuf1, &sender),
                        sock_to_cstr(sockbuf2, orig_sender) );
 
-            handle_PACKET( eee, &cmn, &pkt, orig_sender, udp_buf+idx, recvlen-idx );
+            handle_PACKET( eee, &cmn, &pkt, orig_sender, remote_local_sock,
+                    udp_buf+idx, recvlen-idx );
         }
         else if(msg_type == MSG_TYPE_REGISTER)
         {
             /* Another edge is registering with us */
             n2n_REGISTER_t reg;
-            n2n_sock_t * remote_local_sock;
 
             decode_REGISTER( &reg, &cmn, udp_buf, &rem, &idx );
 
@@ -1789,25 +1803,18 @@ static void readFromIPSocket( n2n_edge_t * eee )
             {
                 orig_sender = &(reg.sock);
             }
-            if ( cmn.flags & N2N_FLAGS_LOCAL_SOCKET ) {
-                remote_local_sock = &(reg.local_sock);
-                sock_to_cstr(sockbuf3, remote_local_sock);
-            } else {
-                remote_local_sock = NULL;
-                sockbuf3[0] = '\0';
-            }
 
-            traceEvent(TRACE_INFO, "Rx REGISTER src=%s dst=%s from peer %s "
-                    "(sn: %s, local: %s)",
-                       macaddr_str( mac_buf1, reg.srcMac ),
-                       macaddr_str( mac_buf2, reg.dstMac ),
-                       sock_to_cstr(sockbuf1, &sender),
-                       sock_to_cstr(sockbuf2, orig_sender),
-                       (char *) sockbuf3);
+            traceEvent(TRACE_INFO,
+                    "Rx REGISTER src=%s dst=%s from peer %s (%s)",
+                    macaddr_str( mac_buf1, reg.srcMac ),
+                    macaddr_str( mac_buf2, reg.dstMac ),
+                    sock_to_cstr(sockbuf1, &sender),
+                    sock_to_cstr(sockbuf2, orig_sender) );
 
             if ( 0 == memcmp(reg.dstMac, (eee->device.mac_addr), 6) )
             {
-                check_peer( eee, from_supernode, reg.srcMac, orig_sender, remote_local_sock );
+                check_peer( eee, from_supernode, reg.srcMac,
+                        orig_sender, NULL);
             }
 
             send_register_ack(eee, orig_sender, &reg);
