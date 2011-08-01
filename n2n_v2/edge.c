@@ -1794,6 +1794,7 @@ static void readFromIPSocket( n2n_edge_t * eee )
         {
             /* Another edge is registering with us */
             n2n_REGISTER_t reg;
+            peer_info_t tmp;
 
             decode_REGISTER( &reg, &cmn, udp_buf, &rem, &idx );
 
@@ -1811,8 +1812,13 @@ static void readFromIPSocket( n2n_edge_t * eee )
 
             if ( 0 == memcmp(reg.dstMac, (eee->device.mac_addr), 6) )
             {
-                check_peer( eee, from_supernode, reg.srcMac,
-                        orig_sender, NULL);
+                memcpy(tmp.mac_addr, reg.srcMac, sizeof(n2n_mac_t));
+                if (sglib_hashed_peer_info_t_find_member( 
+                            eee->pending_peers, &tmp) != NULL)
+                    send_register(eee, orig_sender);
+                else
+                    check_peer( eee, from_supernode, reg.srcMac,
+                            orig_sender, NULL );
             }
 
             send_register_ack(eee, orig_sender, &reg);
