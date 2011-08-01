@@ -1212,13 +1212,13 @@ static void send_packet2net(n2n_edge_t * eee,
             /* This is an IP packet from the local source address - not forwarded. */
 #define ETH_FRAMESIZE 14
 #define IP4_SRCOFFSET 12
-            uint32_t *dst = (uint32_t*)&tap_pkt[ETH_FRAMESIZE + IP4_SRCOFFSET];
+            uint32_t *src = (uint32_t*)&tap_pkt[ETH_FRAMESIZE + IP4_SRCOFFSET];
 
             /* Note: all elements of the_ip are in network order */
-            if( *dst != eee->device.ip_addr) {
+            if( *src != eee->device.ip_addr) {
 		/* This is a packet that needs to be routed */
 		traceEvent(TRACE_INFO, "Discarding routed packet [%s]",
-                           intoa(ntohl(*dst), ip_buf, sizeof(ip_buf)));
+                           intoa(ntohl(*src), ip_buf, sizeof(ip_buf)));
 		return;
             } else {
                 /* This packet is originated by us */
