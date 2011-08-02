@@ -2196,7 +2196,7 @@ int main(int argc, char* argv[])
     optarg = NULL;
     while((opt = getopt_long(effectiveargc,
                              effectiveargv,
-                             "K:k:a:bc:Eu:g:m:M:s:d:l:i:p:fvhrt:", long_options, NULL)) != EOF)
+                             "K:k:a:bc:Eu:g:m:M:s:d:l:L:i:p:fvhrt:", long_options, NULL)) != EOF)
     {
         switch (opt)
         {
