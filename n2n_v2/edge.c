@@ -577,7 +577,8 @@ static ssize_t sendto_sock( int fd, const void * buf, size_t len, const n2n_sock
 
 /** Send a REGISTER packet to another edge. */
 static void send_register( n2n_edge_t * eee,
-                           const n2n_sock_t * remote_peer)
+                           const n2n_sock_t * remote_peer,
+                           const n2n_mac_t dstMac)
 {
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx;
@@ -597,6 +598,10 @@ static void send_register( n2n_edge_t * eee,
     encode_uint32( reg.cookie, &idx, 123456789 );
     idx=0;
     encode_mac( reg.srcMac, &idx, eee->device.mac_addr );
+    if(dstMac) {
+        idx=0;
+        encode_mac( reg.dstMac, &idx, dstMac );
+    }
 
     idx=0;
     encode_REGISTER( pktbuf, &idx, &cmn, &reg );
@@ -767,9 +772,9 @@ void try_send_register( n2n_edge_t * eee,
 
         /* trace Sending REGISTER */
 
-        send_register(eee, &(scan->sock) );
+        send_register(eee, &(scan->sock), scan->mac_addr );
         if( scan->local_sock ) {
-            send_register(eee, scan->local_sock );
+            send_register(eee, scan->local_sock, scan->mac_addr );
         }
 
         /* pending_peers now owns scan. */
@@ -1107,9 +1112,9 @@ static int find_peer_destination(n2n_edge_t * eee,
 				traceEvent(TRACE_INFO, "retrying to register peer (%s) -> [%s]",
 					macaddr_str( mac_buf, mac_address),
 					sock_to_cstr( sockbuf, &tryscan->sock));
-				send_register(eee, &tryscan->sock);
+				send_register(eee, &tryscan->sock, tryscan->mac_addr);
                 if ( tryscan->local_sock )
-                    send_register(eee, tryscan->local_sock);
+                    send_register(eee, tryscan->local_sock, tryscan->mac_addr);
 				tryscan->last_seen = now;
 			}
 		}
@@ -1816,7 +1821,7 @@ static void readFromIPSocket( n2n_edge_t * eee )
                 memcpy(tmp.mac_addr, reg.srcMac, sizeof(n2n_mac_t));
                 if (sglib_hashed_peer_info_t_find_member( 
                             eee->pending_peers, &tmp) != NULL)
-                    send_register(eee, orig_sender);
+                    send_register(eee, orig_sender, NULL);
                 else
                     check_peer( eee, from_supernode, reg.srcMac,
                             orig_sender, NULL );
