@@ -39,10 +39,8 @@ truncated to take the first 16 bytes.
 \-h
 write usage then exit.
 .TP
-\-i <local_ip>
-adds a local ip address which is sent to other nodes on registration. The nodes
-will then try to register both with the address seen by the supernode and the
-local address. This can be used to circumvent the binhind-same-nat problem.
+\-i
+interval for registration messages sent to the supernode.
 .TP
 \-k <keystring>
 sets the twofish encryption key from ASCII text (see also N2N_KEY in
@@ -63,6 +61,11 @@ sets the n2n supernode IP address and port to register to. Up to 2 supernodes
 can be specified by two invocations of -l <addr>:<port>. eg.
 .B edge -l 12.34.56.78:7654 -l 98.76.54.32:7654
 .
+.TP
+\-L <local_ip>
+adds a local ip address which is sent to other nodes on registration. The nodes
+will then try to register both with the address seen by the supernode and the
+local address. This can be used to circumvent the binhind-same-nat problem.
 .TP
 \-p <num>
 binds edge to the given UDP port. Useful for keeping the same external socket

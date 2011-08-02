@@ -33,11 +33,11 @@
 #define SOCKET_TIMEOUT_INTERVAL_SECS    5
 #define REGISTER_SUPER_INTERVAL_DFL     20 /* sec */
 #else  /* #if defined(DEBUG) */
-#define SOCKET_TIMEOUT_INTERVAL_SECS    10
-#define REGISTER_SUPER_INTERVAL_DFL     60 /* sec */
+#define SOCKET_TIMEOUT_INTERVAL_SECS    5
+#define REGISTER_SUPER_INTERVAL_DFL     120 /* sec */
 #endif /* #if defined(DEBUG) */
 
-#define REGISTER_SUPER_INTERVAL_MIN     20   /* sec */
+#define REGISTER_SUPER_INTERVAL_MIN     10   /* sec */
 #define REGISTER_SUPER_INTERVAL_MAX     3600 /* sec */
 
 #define IFACE_UPDATE_INTERVAL           (30) /* sec. How long it usually takes to get an IP lease. */
@@ -1129,15 +1129,16 @@ static int find_peer_destination(n2n_edge_t * eee,
 /* *********************************************** */
 
 static const struct option long_options[] = {
-  { "community",       required_argument, NULL, 'c' },
-  { "supernode-list",  required_argument, NULL, 'l' },
-  { "tun-device",      required_argument, NULL, 'd' },
-  { "euid",            required_argument, NULL, 'u' },
-  { "egid",            required_argument, NULL, 'g' },
-  { "local-ip",        required_argument, NULL, 'i' },
-  { "help"   ,         no_argument,       NULL, 'h' },
-  { "verbose",         no_argument,       NULL, 'v' },
-  { NULL,              0,                 NULL,  0  }
+  { "community",          required_argument, NULL, 'c' },
+  { "supernode-list",     required_argument, NULL, 'l' },
+  { "tun-device",         required_argument, NULL, 'd' },
+  { "euid",               required_argument, NULL, 'u' },
+  { "egid",               required_argument, NULL, 'g' },
+  { "local-ip",           required_argument, NULL, 'L' },
+  { "supernode-interval", required_argument, NULL, 'i' },
+  { "help"   ,            no_argument,       NULL, 'h' },
+  { "verbose",            no_argument,       NULL, 'v' },
+  { NULL,                 0,                 NULL,  0  }
 };
 
 /* ***************************************************** */
@@ -1877,9 +1878,12 @@ static void readFromIPSocket( n2n_edge_t * eee )
                     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
 
                     /* REVISIT: store sn_back */
+                    /* don't adjust lifetime according to supernode - this value should be specified
+                     * by the client (because dependent on NAT/firewall) (lukas) 
                     eee->register_lifetime = ra.lifetime;
                     eee->register_lifetime = MAX( eee->register_lifetime, REGISTER_SUPER_INTERVAL_MIN );
                     eee->register_lifetime = MIN( eee->register_lifetime, REGISTER_SUPER_INTERVAL_MAX );
+                     */
                 }
                 else
                 {
@@ -2298,7 +2302,14 @@ int main(int argc, char* argv[])
             break;
         }
 
-        case 'i': /* local ip */
+        case 'i': /* supernode registration interval */
+        {
+            eee.register_lifetime = atoi(optarg);
+            eee.register_lifetime = MAX( eee.register_lifetime, REGISTER_SUPER_INTERVAL_MIN );
+            eee.register_lifetime = MIN( eee.register_lifetime, REGISTER_SUPER_INTERVAL_MAX );
+            break;
+        }
+        case 'L': /* local ip */
         {
             eee.local_sock_ena = 1;
             strncpy( eee.local_ip_str, optarg, N2N_EDGE_LOCAL_IP_SIZE);
