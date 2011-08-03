@@ -122,6 +122,7 @@ struct n2n_edge
     struct peer_info *  pending_peers[PEER_HASH_TAB_SIZE];          /**< Edges we have tried to register with. */
     time_t              last_register_req;      /**< Check if time to re-register with super*/
     size_t              register_lifetime;      /**< Time distance after last_register_req at which to re-register. */
+    time_t              last_purge;             /** last time clients were purged **/
     time_t              last_p2p;               /**< Last time p2p traffic was received. */
     time_t              last_sup;               /**< Last time a packet arrived from supernode. */
     size_t              sup_attempts;           /**< Number of remaining attempts to this supernode. */
@@ -319,6 +320,7 @@ static int edge_init(n2n_edge_t * eee)
     eee->register_lifetime = REGISTER_SUPER_INTERVAL_DFL;
     eee->last_p2p = 0;
     eee->last_sup = 0;
+    eee->last_purge = 0;
     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
 	eee->tx_bit_p2p = 0;
 	eee->tx_bit_sup = 0;
@@ -2599,8 +2601,12 @@ static int run_loop(n2n_edge_t * eee )
 
         update_supernode_reg(eee, nowTime);
 
-        numPurged =  hashed_purge_expired_registrations( eee->known_peers );
-        numPurged += hashed_purge_expired_registrations( eee->pending_peers );
+        numPurged = 0;
+        if ((nowTime - eee->last_purge) >= PURGE_REGISTRATION_FREQUENCY) {
+            numPurged += hashed_purge_expired_registrations(eee->known_peers);
+            numPurged += hashed_purge_expired_registrations(eee->pending_peers);
+            eee->last_purge = nowTime;
+        }
         if ( numPurged > 0 )
         {
             traceEvent( TRACE_NORMAL, "Peer removed: pending=%u, operational=%u",

@@ -38,6 +38,7 @@ struct n2n_sn
     uint16_t            lport;          /* Local UDP port to bind to. */
     int                 sock;           /* Main socket for UDP traffic with edges. */
     int                 mgmt_sock;      /* management socket. */
+    time_t              last_purge;     /* last purge time */
     peer_info_t *		edges[PEER_HASH_TAB_SIZE];          /* Link list of registered edges. */
 };
 
@@ -70,6 +71,7 @@ static int init_sn( n2n_sn_t * sss )
     sss->lport = N2N_SN_LPORT_DEFAULT;
     sss->sock = -1;
     sss->mgmt_sock = -1;
+    sss->last_purge = 0;
 	sglib_hashed_peer_info_t_init(sss->edges);
 
     return 0; /* OK */
@@ -777,8 +779,10 @@ static int run_loop( n2n_sn_t * sss )
         {
             traceEvent( TRACE_DEBUG, "timeout" );
         }
-
-		hashed_purge_expired_registrations( sss->edges );
+        if ((now - sss->last_purge) >= PURGE_REGISTRATION_FREQUENCY) {
+            hashed_purge_expired_registrations( sss->edges );
+            sss->last_purge = now;
+        }
 
     } /* while */
 
