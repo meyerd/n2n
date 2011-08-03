@@ -52,6 +52,7 @@ enum n2n_pc
 
 typedef enum n2n_pc n2n_pc_t;
 
+#define N2N_FLAGS_LOCAL_SOCKET          0x0100
 #define N2N_FLAGS_OPTIONS               0x0080
 #define N2N_FLAGS_SOCKET                0x0040
 #define N2N_FLAGS_FROM_SUPERNODE        0x0020
@@ -116,7 +117,7 @@ struct n2n_REGISTER
     n2n_cookie_t        cookie;         /* Link REGISTER and REGISTER_ACK */
     n2n_mac_t           srcMac;         /* MAC of registering party */
     n2n_mac_t           dstMac;         /* MAC of target edge */
-    n2n_sock_t          sock;           /* REVISIT: unused? */
+    n2n_sock_t          sock;           /* when relaying by supernode */
 };
 
 typedef struct n2n_REGISTER n2n_REGISTER_t;
@@ -136,6 +137,7 @@ struct n2n_PACKET
     n2n_mac_t           srcMac;
     n2n_mac_t           dstMac;
     n2n_sock_t          sock;
+    n2n_sock_t          local_sock;     /* for behind-same-nat problem */
     n2n_transform_t     transform;
 };
 

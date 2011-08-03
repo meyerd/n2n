@@ -33,11 +33,11 @@
 #define SOCKET_TIMEOUT_INTERVAL_SECS    5
 #define REGISTER_SUPER_INTERVAL_DFL     20 /* sec */
 #else  /* #if defined(DEBUG) */
-#define SOCKET_TIMEOUT_INTERVAL_SECS    10
-#define REGISTER_SUPER_INTERVAL_DFL     60 /* sec */
+#define SOCKET_TIMEOUT_INTERVAL_SECS    5
+#define REGISTER_SUPER_INTERVAL_DFL     120 /* sec */
 #endif /* #if defined(DEBUG) */
 
-#define REGISTER_SUPER_INTERVAL_MIN     20   /* sec */
+#define REGISTER_SUPER_INTERVAL_MIN     10   /* sec */
 #define REGISTER_SUPER_INTERVAL_MAX     3600 /* sec */
 
 #define IFACE_UPDATE_INTERVAL           (30) /* sec. How long it usually takes to get an IP lease. */
@@ -78,8 +78,10 @@
 /* ******************************************************* */
 
 #define N2N_EDGE_SN_HOST_SIZE 48
+#define N2N_EDGE_LOCAL_IP_SIZE 48
 
 typedef char n2n_sn_name_t[N2N_EDGE_SN_HOST_SIZE];
+typedef char n2n_local_ip_t[N2N_EDGE_LOCAL_IP_SIZE];
 
 #define N2N_EDGE_NUM_SUPERNODES 2
 #define N2N_EDGE_SUP_ATTEMPTS   3       /* Number of failed attmpts before moving on to next supernode. */
@@ -92,10 +94,13 @@ struct n2n_edge
     uint8_t             re_resolve_supernode_ip;
 
     n2n_sock_t          supernode;
+    n2n_sock_t          local_sock;
 
     size_t              sn_idx;                 /**< Currently active supernode. */
     size_t              sn_num;                 /**< Number of supernode addresses defined. */
     n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
+    n2n_local_ip_t      local_ip_str;          /** storing a local ip socket */
+    int                 local_sock_ena;        /** > 0 if local_sock is enabled */
     int                 sn_wait;                /**< Whether we are waiting for a supernode response. */
 
     n2n_community_t     community_name;         /**< The community. 16 full octets. */
@@ -147,6 +152,8 @@ static const char * supernode_ip( const n2n_edge_t * eee )
 
 
 static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addr);
+static int localip2addr(n2n_sock_t * l_ip,
+        const n2n_local_ip_t local_ip_strIn, int local_port);
 
 static void send_packet2net(n2n_edge_t * eee,
 			    uint8_t *decrypted_msg, size_t len);
@@ -305,6 +312,7 @@ static int edge_init(n2n_edge_t * eee)
     eee->dyn_ip_mode    = 0;
     eee->allow_routing  = 0;
     eee->drop_multicast = 1;
+    eee->local_sock_ena = 0;
 	sglib_hashed_peer_info_t_init(eee->known_peers);
 	sglib_hashed_peer_info_t_init(eee->pending_peers);
     eee->last_register_req = 0;
@@ -513,6 +521,7 @@ static void help() {
   printf("-K <key file>            | Specify a key schedule file to load. Not with -k.\n");
   printf("-s <netmask>             | Edge interface netmask in dotted decimal notation (255.255.255.0).\n");
   printf("-l <supernode host:port> | Supernode IP:port\n");
+  printf("-i <local_ip>            | Add local ip to bypass between same nat problem\n");
   printf("-b                       | Periodically resolve supernode IP\n");
   printf("                         : (when supernodes are running on dynamic IPs)\n");
   printf("-p <local port>          | Fixed local UDP port.\n");
@@ -541,6 +550,7 @@ static void help() {
 /** Send a datagram to a socket defined by a n2n_sock_t */
 static ssize_t sendto_sock( int fd, const void * buf, size_t len, const n2n_sock_t * dest )
 {
+    n2n_sock_str_t sockbuf;
     struct sockaddr_in peer_addr;
     ssize_t sent;
 
@@ -553,7 +563,8 @@ static ssize_t sendto_sock( int fd, const void * buf, size_t len, const n2n_sock
     if ( sent < 0 )
     {
         char * c = strerror(errno);
-        traceEvent( TRACE_ERROR, "sendto failed (%d) %s", errno, c );
+        traceEvent( TRACE_ERROR, "sendto %s failed (%d) %s",
+                sock_to_cstr( sockbuf, dest ), errno, c );
     }
     else
     {
@@ -566,26 +577,31 @@ static ssize_t sendto_sock( int fd, const void * buf, size_t len, const n2n_sock
 
 /** Send a REGISTER packet to another edge. */
 static void send_register( n2n_edge_t * eee,
-                           const n2n_sock_t * remote_peer)
+                           const n2n_sock_t * remote_peer,
+                           const n2n_mac_t dstMac)
 {
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx;
     ssize_t sent;
-    n2n_common_t cmn;
-    n2n_REGISTER_t reg;
+    n2n_common_t cmn = {0};
+    n2n_REGISTER_t reg = {0};
     n2n_sock_str_t sockbuf;
 
-    memset(&cmn, 0, sizeof(cmn) );
-    memset(&reg, 0, sizeof(reg) );
     cmn.ttl=N2N_DEFAULT_TTL;
     cmn.pc = n2n_register;
     cmn.flags = 0;
     memcpy( cmn.community, eee->community_name, N2N_COMMUNITY_SIZE );
 
+    /* NOTE: Encoding should probably not be done here but in 
+     * encode_REGISTER (lukas) */
     idx=0;
     encode_uint32( reg.cookie, &idx, 123456789 );
     idx=0;
     encode_mac( reg.srcMac, &idx, eee->device.mac_addr );
+    if(dstMac) {
+        idx=0;
+        encode_mac( reg.dstMac, &idx, dstMac );
+    }
 
     idx=0;
     encode_REGISTER( pktbuf, &idx, &cmn, &reg );
@@ -696,11 +712,13 @@ static void update_peer_address(n2n_edge_t * eee,
 void check_peer( n2n_edge_t * eee,
                  uint8_t from_supernode,
                  const n2n_mac_t mac,
-                 const n2n_sock_t * peer );
+                 const n2n_sock_t * peer,
+                 const n2n_sock_t * remote_local_sock );
 void try_send_register( n2n_edge_t * eee,
                         uint8_t from_supernode,
                         const n2n_mac_t mac,
-                        const n2n_sock_t * peer );
+                        const n2n_sock_t * peer,
+                        const n2n_sock_t * remote_local_sock );
 void set_peer_operational( n2n_edge_t * eee,
                            const n2n_mac_t mac,
                            const n2n_sock_t * peer );
@@ -723,7 +741,8 @@ void set_peer_operational( n2n_edge_t * eee,
 void try_send_register( n2n_edge_t * eee,
                         uint8_t from_supernode,
                         const n2n_mac_t mac,
-                        const n2n_sock_t * peer )
+                        const n2n_sock_t * peer,
+                        const n2n_sock_t * remote_local_sock )
 {
     /* REVISIT: purge of pending_peers not yet done. */
     struct peer_info * scan = find_peer_by_mac( eee->pending_peers, mac );
@@ -737,6 +756,10 @@ void try_send_register( n2n_edge_t * eee,
         memcpy(scan->mac_addr, mac, N2N_MAC_SIZE);
         scan->sock = *peer;
         scan->last_seen = time(NULL); /* Don't change this it marks the pending peer for removal. */
+        if( remote_local_sock ) {
+            scan->local_sock = (n2n_sock_t *) malloc(sizeof(n2n_sock_t));
+            (*scan->local_sock) = *remote_local_sock;
+        }
 
 		sglib_hashed_peer_info_t_add(eee->pending_peers, scan);
 
@@ -749,7 +772,10 @@ void try_send_register( n2n_edge_t * eee,
 
         /* trace Sending REGISTER */
 
-        send_register(eee, &(scan->sock) );
+        send_register(eee, &(scan->sock), scan->mac_addr );
+        if( scan->local_sock ) {
+            send_register(eee, scan->local_sock, scan->mac_addr );
+        }
 
         /* pending_peers now owns scan. */
     }
@@ -763,7 +789,8 @@ void try_send_register( n2n_edge_t * eee,
 void check_peer( n2n_edge_t * eee,
                  uint8_t from_supernode,
                  const n2n_mac_t mac,
-                 const n2n_sock_t * peer )
+                 const n2n_sock_t * peer,
+                 const n2n_sock_t * remote_local_sock )
 {
 	peer_info_t scan;
 	memcpy(scan.mac_addr, mac, sizeof(n2n_mac_t));
@@ -771,7 +798,7 @@ void check_peer( n2n_edge_t * eee,
 	if (sglib_hashed_peer_info_t_find_member(eee->known_peers, &scan) == NULL)
     {
         /* Not in known_peers - start the REGISTER process. */
-        try_send_register( eee, from_supernode, mac, peer );
+        try_send_register( eee, from_supernode, mac, peer, remote_local_sock );
     }
     else
     {
@@ -807,9 +834,13 @@ void set_peer_operational( n2n_edge_t * eee,
     if(scan) {
         /* Remove scan from pending_peers. */
 		sglib_hashed_peer_info_t_delete(eee->pending_peers, scan);
+        /* remove local address, not needed for an operational peer */
+        free(scan->local_sock);
+        scan->local_sock = NULL;
         
         /* Add scan to known_peers. */
 		sglib_hashed_peer_info_t_add(eee->known_peers, scan);
+
         
         scan->sock = *peer;
 
@@ -920,7 +951,7 @@ static void update_peer_address(n2n_edge_t * eee,
 			sglib_hashed_peer_info_t_delete(eee->known_peers, scan);
             free(scan);
 
-            try_send_register( eee, from_supernode, mac, peer );
+            try_send_register( eee, from_supernode, mac, peer, NULL );
         }
         else
         {
@@ -1081,7 +1112,9 @@ static int find_peer_destination(n2n_edge_t * eee,
 				traceEvent(TRACE_INFO, "retrying to register peer (%s) -> [%s]",
 					macaddr_str( mac_buf, mac_address),
 					sock_to_cstr( sockbuf, &tryscan->sock));
-				send_register(eee, &tryscan->sock);
+				send_register(eee, &tryscan->sock, tryscan->mac_addr);
+                if ( tryscan->local_sock )
+                    send_register(eee, tryscan->local_sock, tryscan->mac_addr);
 				tryscan->last_seen = now;
 			}
 		}
@@ -1101,14 +1134,16 @@ static int find_peer_destination(n2n_edge_t * eee,
 /* *********************************************** */
 
 static const struct option long_options[] = {
-  { "community",       required_argument, NULL, 'c' },
-  { "supernode-list",  required_argument, NULL, 'l' },
-  { "tun-device",      required_argument, NULL, 'd' },
-  { "euid",            required_argument, NULL, 'u' },
-  { "egid",            required_argument, NULL, 'g' },
-  { "help"   ,         no_argument,       NULL, 'h' },
-  { "verbose",         no_argument,       NULL, 'v' },
-  { NULL,              0,                 NULL,  0  }
+  { "community",          required_argument, NULL, 'c' },
+  { "supernode-list",     required_argument, NULL, 'l' },
+  { "tun-device",         required_argument, NULL, 'd' },
+  { "euid",               required_argument, NULL, 'u' },
+  { "egid",               required_argument, NULL, 'g' },
+  { "local-ip",           required_argument, NULL, 'L' },
+  { "supernode-interval", required_argument, NULL, 'i' },
+  { "help"   ,            no_argument,       NULL, 'h' },
+  { "verbose",            no_argument,       NULL, 'v' },
+  { NULL,                 0,                 NULL,  0  }
 };
 
 /* ***************************************************** */
@@ -1119,31 +1154,18 @@ static const struct option long_options[] = {
 static int send_PACKET( n2n_edge_t * eee,
                         n2n_mac_t dstMac,
                         const uint8_t * pktbuf,
-                        size_t pktlen )
+                        size_t pktlen,
+                        n2n_sock_t * destination)
 {
-    int dest;
     ssize_t s;
     n2n_sock_str_t sockbuf;
-    n2n_sock_t destination;
 
     /* hexdump( pktbuf, pktlen ); */
 
-    dest = find_peer_destination(eee, dstMac, &destination);
 
-    if ( dest )
-    {
-        ++(eee->tx_p2p);
-		eee->tx_bit_p2p += pktlen;
-    }
-    else
-    {
-        ++(eee->tx_sup);
-		eee->tx_bit_sup += pktlen;
-    }
+    traceEvent( TRACE_INFO, "send_PACKET to %s", sock_to_cstr( sockbuf, destination ) );
 
-    traceEvent( TRACE_INFO, "send_PACKET to %s", sock_to_cstr( sockbuf, &destination ) );
-
-    s = sendto_sock( eee->udp_sock, pktbuf, pktlen, &destination );
+    s = sendto_sock( eee->udp_sock, pktbuf, pktlen, destination );
 
     return 0;
 }
@@ -1184,6 +1206,9 @@ static void send_packet2net(n2n_edge_t * eee,
 
     ether_hdr_t eh;
 
+    int dest;
+    n2n_sock_t destination;
+
     /* tap_pkt is not aligned so we have to copy to aligned memory */
     memcpy( &eh, tap_pkt, sizeof(ether_hdr_t) );
 
@@ -1193,13 +1218,13 @@ static void send_packet2net(n2n_edge_t * eee,
             /* This is an IP packet from the local source address - not forwarded. */
 #define ETH_FRAMESIZE 14
 #define IP4_SRCOFFSET 12
-            uint32_t *dst = (uint32_t*)&tap_pkt[ETH_FRAMESIZE + IP4_SRCOFFSET];
+            uint32_t *src = (uint32_t*)&tap_pkt[ETH_FRAMESIZE + IP4_SRCOFFSET];
 
             /* Note: all elements of the_ip are in network order */
-            if( *dst != eee->device.ip_addr) {
+            if( *src != eee->device.ip_addr) {
 		/* This is a packet that needs to be routed */
 		traceEvent(TRACE_INFO, "Discarding routed packet [%s]",
-                           intoa(ntohl(*dst), ip_buf, sizeof(ip_buf)));
+                           intoa(ntohl(*src), ip_buf, sizeof(ip_buf)));
 		return;
             } else {
                 /* This packet is originated by us */
@@ -1220,13 +1245,20 @@ static void send_packet2net(n2n_edge_t * eee,
     cmn.flags=0; /* no options, not from supernode, no socket */
     memcpy( cmn.community, eee->community_name, N2N_COMMUNITY_SIZE );
 
+    dest = find_peer_destination(eee, destMac, &destination);
+
     memset( &pkt, 0, sizeof(pkt) );
     memcpy( pkt.srcMac, eee->device.mac_addr, N2N_MAC_SIZE);
     memcpy( pkt.dstMac, destMac, N2N_MAC_SIZE);
 
+    if(!dest && eee->local_sock_ena) {
+        /* sent via supernode, so we add local socket if present*/
+        cmn.flags |= N2N_FLAGS_LOCAL_SOCKET;
+        pkt.local_sock = eee->local_sock;
+    }
+
     tx_transop_idx = edge_choose_tx_transop( eee );
 
-    pkt.sock.family=0; /* do not encode sock */
     pkt.transform = eee->transop[tx_transop_idx].transform_id;
 
     idx=0;
@@ -1239,7 +1271,17 @@ static void send_packet2net(n2n_edge_t * eee,
                                              tap_pkt, len );
     ++(eee->transop[tx_transop_idx].tx_cnt); /* stats */
 
-    send_PACKET( eee, destMac, pktbuf, idx ); /* to peer or supernode */
+    if ( dest )
+    {
+        ++(eee->tx_p2p);
+		eee->tx_bit_p2p += idx;
+    }
+    else
+    {
+        ++(eee->tx_sup);
+		eee->tx_bit_sup += idx;
+    }
+    send_PACKET( eee, destMac, pktbuf, idx, &destination);
 }
 
 
@@ -1337,6 +1379,7 @@ static int handle_PACKET( n2n_edge_t * eee,
                           const n2n_common_t * cmn,
                           const n2n_PACKET_t * pkt,
                           const n2n_sock_t * orig_sender,
+                          const n2n_sock_t * remote_local_sock,
                           uint8_t * payload,
                           size_t psize )
 {
@@ -1368,7 +1411,8 @@ static int handle_PACKET( n2n_edge_t * eee,
     }
 
     /* Update the sender in peer table entry */
-    check_peer( eee, from_supernode, pkt->srcMac, orig_sender );
+    check_peer( eee, from_supernode, pkt->srcMac, orig_sender,
+            remote_local_sock );
 
     /* Handle transform. */
     {
@@ -1730,41 +1774,57 @@ static void readFromIPSocket( n2n_edge_t * eee )
         {
             /* process PACKET - most frequent so first in list. */
             n2n_PACKET_t pkt;
+            n2n_sock_t * remote_local_sock;
 
             decode_PACKET( &pkt, &cmn, udp_buf, &rem, &idx );
 
-            if ( pkt.sock.family )
+            if ( cmn.flags & N2N_FLAGS_SOCKET )
             {
                 orig_sender = &(pkt.sock);
+            }
+            if ( cmn.flags & N2N_FLAGS_LOCAL_SOCKET )
+            {
+                remote_local_sock = &(pkt.local_sock);
+            } else {
+                remote_local_sock = NULL;
             }
 
             traceEvent(TRACE_INFO, "Rx PACKET from %s (%s)",
                        sock_to_cstr(sockbuf1, &sender),
                        sock_to_cstr(sockbuf2, orig_sender) );
 
-            handle_PACKET( eee, &cmn, &pkt, orig_sender, udp_buf+idx, recvlen-idx );
+            handle_PACKET( eee, &cmn, &pkt, orig_sender, remote_local_sock,
+                    udp_buf+idx, recvlen-idx );
         }
         else if(msg_type == MSG_TYPE_REGISTER)
         {
             /* Another edge is registering with us */
             n2n_REGISTER_t reg;
+            peer_info_t tmp;
 
             decode_REGISTER( &reg, &cmn, udp_buf, &rem, &idx );
 
-            if ( reg.sock.family )
+            if ( cmn.flags & N2N_FLAGS_SOCKET )
             {
                 orig_sender = &(reg.sock);
             }
 
-            traceEvent(TRACE_INFO, "Rx REGISTER src=%s dst=%s from peer %s (%s)",
-                       macaddr_str( mac_buf1, reg.srcMac ),
-                       macaddr_str( mac_buf2, reg.dstMac ),
-                       sock_to_cstr(sockbuf1, &sender),
-                       sock_to_cstr(sockbuf2, orig_sender) );
+            traceEvent(TRACE_INFO,
+                    "Rx REGISTER src=%s dst=%s from peer %s (%s)",
+                    macaddr_str( mac_buf1, reg.srcMac ),
+                    macaddr_str( mac_buf2, reg.dstMac ),
+                    sock_to_cstr(sockbuf1, &sender),
+                    sock_to_cstr(sockbuf2, orig_sender) );
 
             if ( 0 == memcmp(reg.dstMac, (eee->device.mac_addr), 6) )
             {
-                check_peer( eee, from_supernode, reg.srcMac, orig_sender );
+                memcpy(tmp.mac_addr, reg.srcMac, sizeof(n2n_mac_t));
+                if (sglib_hashed_peer_info_t_find_member( 
+                            eee->pending_peers, &tmp) != NULL)
+                    send_register(eee, orig_sender, NULL);
+                else
+                    check_peer( eee, from_supernode, reg.srcMac,
+                            orig_sender, NULL );
             }
 
             send_register_ack(eee, orig_sender, &reg);
@@ -1823,9 +1883,12 @@ static void readFromIPSocket( n2n_edge_t * eee )
                     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
 
                     /* REVISIT: store sn_back */
+                    /* don't adjust lifetime according to supernode - this value should be specified
+                     * by the client (because dependent on NAT/firewall) (lukas) 
                     eee->register_lifetime = ra.lifetime;
                     eee->register_lifetime = MAX( eee->register_lifetime, REGISTER_SUPER_INTERVAL_MIN );
                     eee->register_lifetime = MIN( eee->register_lifetime, REGISTER_SUPER_INTERVAL_MAX );
+                     */
                 }
                 else
                 {
@@ -1948,6 +2011,36 @@ static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn)
         traceEvent(TRACE_WARNING, "Wrong supernode parameter (-l <host:port>)");
 }
 
+/** Decode local address string (given on command line)
+ */
+static int localip2addr(n2n_sock_t * l_ip,
+        const n2n_local_ip_t local_ip_str, int local_port)
+{
+    /* TODO: IPv6? */
+    unsigned int ip[4];
+    int i, n_matches;
+
+    n_matches = sscanf( local_ip_str, "%u.%u.%u.%u", &ip[0], &ip[1], &ip[2],
+            &ip[3]);
+
+    if( n_matches != 4) {
+        traceEvent(TRACE_WARNING, "Wrong local_ip parameter (-i ip), disabled");
+        return 0;
+    }
+
+    for( i=0; i < 4; i++ ) {
+        if( ip[i] > 255 ) {
+            traceEvent(TRACE_WARNING, "Invalid local_ip address (-i ip), disabled");
+            return 0;
+        }
+    }
+    l_ip->family = AF_INET;
+    l_ip->port = local_port;
+    for( i = 0; i < 4; i++ )
+        l_ip->addr.v4[i] = ip[i];
+    return 1;
+}
+
 /* ***************************************************** */
 
 
@@ -2037,6 +2130,10 @@ int main(int argc, char* argv[])
     char ** effectiveargv=NULL;
     char  * linebuffer = NULL;
 
+    n2n_sock_str_t local_sockbuf;
+    struct sockaddr_in sa;
+    socklen_t sa_len;
+
     n2n_edge_t eee; /* single instance for this program */
 
     if (-1 == edge_init(&eee) )
@@ -2104,7 +2201,7 @@ int main(int argc, char* argv[])
     optarg = NULL;
     while((opt = getopt_long(effectiveargc,
                              effectiveargv,
-                             "K:k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:", long_options, NULL)) != EOF)
+                             "K:k:a:bc:Eu:g:m:M:s:d:l:L:i:p:fvhrt:", long_options, NULL)) != EOF)
     {
         switch (opt)
         {
@@ -2207,6 +2304,23 @@ int main(int argc, char* argv[])
                 fprintf(stderr, "Too many supernodes!\n" );
                 exit(1);
             }
+            break;
+        }
+
+        case 'i': /* supernode registration interval */
+        {
+            eee.register_lifetime = atoi(optarg);
+            eee.register_lifetime = MAX( eee.register_lifetime, REGISTER_SUPER_INTERVAL_MIN );
+            eee.register_lifetime = MIN( eee.register_lifetime, REGISTER_SUPER_INTERVAL_MAX );
+            break;
+        }
+        case 'L': /* local ip */
+        {
+            eee.local_sock_ena = 1;
+            strncpy( eee.local_ip_str, optarg, N2N_EDGE_LOCAL_IP_SIZE);
+            if ( N2N_EDGE_LOCAL_IP_SIZE > 0 )
+                eee.local_ip_str[N2N_EDGE_LOCAL_IP_SIZE - 1] = '\0';
+            traceEvent(TRACE_DEBUG, "Storing local_ip_str = %s\n", (eee.sn_ip_array[eee.sn_num]) );
             break;
         }
 
@@ -2368,6 +2482,22 @@ int main(int argc, char* argv[])
     {
         traceEvent( TRACE_ERROR, "Failed to bind main UDP port %u", (signed int)local_port );
         return(-1);
+    }
+
+
+    if(eee.local_sock_ena) {
+        sa_len = sizeof(sa);
+        if ( getsockname(eee.udp_sock, (struct sockaddr *) &sa, &sa_len) == -1 ) {
+            traceEvent( TRACE_ERROR, "getsockname() failed" );
+            return(-1);
+        }
+        local_port = ntohs(sa.sin_port);
+        memset(&(eee.local_sock), 0, sizeof(eee.local_sock));
+
+        if ( (eee.local_sock_ena = localip2addr( &(eee.local_sock),
+                        eee.local_ip_str, local_port ) ) )
+            traceEvent(TRACE_NORMAL, "Local Socket is %s",
+                    sock_to_cstr( local_sockbuf, &(eee.local_sock) ) );
     }
 
     eee.udp_mgmt_sock = open_socket(mgmt_port, 0 /* bind LOOPBACK*/ );
