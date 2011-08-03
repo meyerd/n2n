@@ -191,18 +191,14 @@ Look at a non-installed man page like this (linux/UNIX):
 nroff -man edge.8 | less
 
 
-PACKET message FORMAT
----------------------
+common header FORMAT
+--------------------
 
-All message encoding and decoding is contained in wire.c. The PACKET message is
-of main concern as it is the most frequently transferred as it contains
-encapsulated ethernet packets.
+All message encoding and decoding is contained in wire.c. 
 
-Version 2
-
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   ! Version=2     ! TTL           ! Flags                         !
+   ! Version=2     ! TTL           ! Flags               ! PktType !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  4 ! Community                                                     :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -212,43 +208,60 @@ Version 2
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 16 ! ... Community ...                                             !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+PACKET message FORMAT
+---------------------
+
+The PACKET message is of main concern as it is the most frequently transferred
+as it contains encapsulated ethernet packets. For these, PktFormat is set to
+n2n_packet and it goes on as follows
+
+    0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 20 ! Source MAC Address                                            :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 24 :                               ! Destination MAC Address       :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 28 :                                                               !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-32 ! Socket Flags (v=IPv4)         ! Destination UDP Port          !
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-36 ! Destination IPv4 Address                                      !
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-40 ! Transform ID                  !
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-44 ! Payload
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-So each n2n PACKET has a 44 byte overhead. For a 1500 byte ethernet packet this
-is roughly 3%.
+If the N2N_FLAGS_SOCKET-Flag is set, the socket of the original sender of the
+packet is encoded next. IPv4 or IPv6 is determined by the Socket Flags.
 
-Socket flags provides support for IPv6. In this case the PACKET message ends as
-follows:
+Socket encoding for IPv4 takes 8 bytes and looks as follows:
 
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-32 ! Socket Flags (v=IPv6)         ! Destination UDP Port          !
+ 0 ! Socket Flags (v=IPv4)         ! Destination UDP Port          !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-36 ! Destination IPv6 Address                                      :
+ 4 ! Destination IPv4 Address                                      !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-40 :                                                               :
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-44 :                                                               :
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-48 :                                                               !
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-52 ! Transform ID                  !
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-56 ! Encapsulated ethernet payload
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
+For IPv6 it takes 20 bytes:
+
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ 0 ! Socket Flags (v=IPv6)         ! Destination UDP Port          !
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ 4 ! Destination IPv6 Address                                      :
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ 8 :                                                               :
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+12 :                                                               :
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+16 :                                                               !
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+After that, if the N2N_FLAGS_LOCAL_SOCKET-Flag is set, yet another socket
+(using the same format as above) will follow (used for bypassing the
+behind-same-nat problem)
+
+Finally, the last part of the packet looks like this:
+
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+40 ! Transform ID                  ! Payload ...                   :
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+44 : ... Payload ...                                               :
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+48 : ... Payload ...
 
 -------
 

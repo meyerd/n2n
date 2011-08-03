@@ -102,7 +102,7 @@ static void deinit_sn( n2n_sn_t * sss )
  */
 static uint16_t reg_lifetime( n2n_sn_t * sss )
 {
-    return 120;
+    return 30;
 }
 
 
