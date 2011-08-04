@@ -33,13 +33,14 @@ SGLIB_DEFINE_LIST_FUNCTIONS(peer_info_t, PEER_INFO_COMPARATOR, next)
 SGLIB_DEFINE_HASHED_CONTAINER_FUNCTIONS(peer_info_t, PEER_HASH_TAB_SIZE, peer_info_t_hash_function)
 
 unsigned int peer_info_t_hash_function(peer_info_t *e) {
-	short i = 0;
-#if N2N_MAC_SIZE > 6
+#if N2N_MAC_SIZE != 6
 	#error not implemented yet!
 #else 
+    int i;
 	uint32_t tmp = 0;
 	for(; i < N2N_MAC_SIZE / 2; i++) {
-		tmp |= (e->mac_addr[i] ^ e->mac_addr[i<<1]) << (N2N_MAC_SIZE / 2 - i - 1);
+		tmp |= (e->mac_addr[i<<1] ^ e->mac_addr[(i<<1)+1])
+            << (N2N_MAC_SIZE/2-1-i);
 	}
 	return tmp;
 #endif
@@ -392,12 +393,12 @@ size_t clear_hashed_peer_info_t_list(peer_info_t ** peer_list) {
 
 static uint8_t hex2byte( const char * s )
 {
-/*  char tmp[3];
+  char tmp[3];
   tmp[0]=s[0];
   tmp[1]=s[1];
-  tmp[2]=0; */ /* NULL term */
+  tmp[2]=0; /* NULL term */
 
-  return((uint8_t)strtol( s, NULL, 16 ));
+  return((uint8_t)strtol( tmp, NULL, 16 ));
 }
 
 extern int str2mac( uint8_t * outmac /* 6 bytes */, const char * s )
@@ -437,8 +438,8 @@ extern char * sock_to_cstr( n2n_sock_str_t out,
     else
     {
         const uint8_t * a = sock->addr.v4;
-        snprintf( out, N2N_SOCKBUF_SIZE, "%hu.%hu.%hu.%hu:%hu", 
-                  (a[0] & 0xff), (a[1] & 0xff), (a[2] & 0xff), (a[3] & 0xff), sock->port );
+        snprintf( out, N2N_SOCKBUF_SIZE, "%hu.%hu.%hu.%hu:%hu", (a[0] & 0xff),
+                (a[1] & 0xff), (a[2] & 0xff), (a[3] & 0xff), sock->port );
         return out;
     }
 }
