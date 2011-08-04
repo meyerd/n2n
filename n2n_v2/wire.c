@@ -245,10 +245,6 @@ int encode_REGISTER( uint8_t * base,
     retval += encode_buf( base, idx, reg->cookie, N2N_COOKIE_SIZE );
     retval += encode_mac( base, idx, reg->srcMac );
     retval += encode_mac( base, idx, reg->dstMac );
-    if ( common->flags & N2N_FLAGS_SOCKET )
-    {
-        retval += encode_sock( base, idx, &(reg->sock) );
-    }
 
     return retval;
 }
@@ -264,11 +260,6 @@ int decode_REGISTER( n2n_REGISTER_t * reg,
     retval += decode_buf( reg->cookie, N2N_COOKIE_SIZE, base, rem, idx );
     retval += decode_mac( reg->srcMac, base, rem, idx );
     retval += decode_mac( reg->dstMac, base, rem, idx );
-
-    if ( cmn->flags & N2N_FLAGS_SOCKET )
-    {
-        retval += decode_sock( &(reg->sock), base, rem, idx );
-    }
 
     return retval;
 }
@@ -315,14 +306,6 @@ int encode_REGISTER_ACK( uint8_t * base,
     retval += encode_mac( base, idx, reg->dstMac );
     retval += encode_mac( base, idx, reg->srcMac );
 
-    /* The socket in REGISTER_ACK is the socket from which the REGISTER
-     * arrived. This is sent back to the sender so it knows what its public
-     * socket is. */
-    if ( 0 != reg->sock.family )
-    {
-        retval += encode_sock( base, idx, &(reg->sock) );
-    }
-
     return retval;
 }
 
@@ -337,14 +320,6 @@ int decode_REGISTER_ACK( n2n_REGISTER_ACK_t * reg,
     retval += decode_buf( reg->cookie, N2N_COOKIE_SIZE, base, rem, idx );
     retval += decode_mac( reg->dstMac, base, rem, idx );
     retval += decode_mac( reg->srcMac, base, rem, idx );
-
-    /* The socket in REGISTER_ACK is the socket from which the REGISTER
-     * arrived. This is sent back to the sender so it knows what its public
-     * socket is. */
-    if ( cmn->flags & N2N_FLAGS_SOCKET )
-    {
-        retval += decode_sock( &(reg->sock), base, rem, idx );
-    }
 
     return retval;
 }
@@ -426,14 +401,6 @@ int encode_PACKET( uint8_t * base,
 {
     int retval=0;
     retval += encode_common( base, idx, common );
-    if ( common->flags & N2N_FLAGS_SOCKET )
-    {
-        retval += encode_sock( base, idx, &(pkt->sock) );
-    }
-    if ( common->flags & N2N_FLAGS_LOCAL_SOCKET )
-    {
-        retval += encode_sock( base, idx, &(pkt->local_sock) );
-    }
     retval += encode_uint16( base, idx, pkt->transform );
 
     return retval;
@@ -448,14 +415,6 @@ int decode_PACKET( n2n_PACKET_t * pkt,
 {
     size_t retval=0;
     memset( pkt, 0, sizeof(n2n_PACKET_t) );
-    if ( cmn->flags & N2N_FLAGS_SOCKET )
-    {
-        retval += decode_sock( &(pkt->sock), base, rem, idx );
-    }
-    if ( cmn->flags & N2N_FLAGS_LOCAL_SOCKET )
-    {
-        retval += decode_sock( &(pkt->local_sock), base, rem, idx );
-    }
     retval += decode_uint16( &(pkt->transform), base, rem, idx );
 
     return retval;

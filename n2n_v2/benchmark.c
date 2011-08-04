@@ -100,8 +100,6 @@ static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_com
 
     memset( &pkt, 0, sizeof(pkt) );
 
-    pkt.sock.family=0; /* do not encode sock */
-
     idx=0;
     encode_PACKET( pktbuf, &idx, &cmn, &pkt );
     traceEvent( TRACE_DEBUG, "encoded PACKET header of size=%u", (unsigned int)idx );

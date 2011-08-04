@@ -52,9 +52,6 @@ enum n2n_pc
 
 typedef enum n2n_pc n2n_pc_t;
 
-#define N2N_FLAGS_LOCAL_SOCKET          0x0100
-#define N2N_FLAGS_OPTIONS               0x0080
-#define N2N_FLAGS_SOCKET                0x0040
 #define N2N_FLAGS_FROM_SUPERNODE        0x0020
 
 /* The bits in flag that are the packet type */
@@ -136,8 +133,6 @@ typedef struct n2n_REGISTER_ACK n2n_REGISTER_ACK_t;
 
 struct n2n_PACKET
 {
-    n2n_sock_t          sock;
-    n2n_sock_t          local_sock;     /* for behind-same-nat problem */
     n2n_transform_t     transform;
 };
 

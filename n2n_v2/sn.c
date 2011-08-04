@@ -459,11 +459,7 @@ static int process_udp( n2n_sn_t * sss,
             memcpy( &cmn2, &cmn, sizeof( n2n_common_t ) );
 
             /* We are going to add socket even if it was not there before */
-            cmn2.flags |= N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
-
-            pkt.sock.family = AF_INET;
-            pkt.sock.port = ntohs(sender_sock->sin_port);
-            memcpy( pkt.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE );
+            cmn2.flags |= N2N_FLAGS_FROM_SUPERNODE;
 
             rec_buf = encbuf;
 
@@ -515,7 +511,7 @@ static int process_udp( n2n_sn_t * sss,
             memcpy( &cmn2, &cmn, sizeof( n2n_common_t ) );
 
             /* We are going to add socket even if it was not there before */
-            cmn2.flags |= N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
+            cmn2.flags |= N2N_FLAGS_FROM_SUPERNODE;
 
             reg.sock.family = AF_INET;
             reg.sock.port = ntohs(sender_sock->sin_port);
@@ -557,7 +553,7 @@ static int process_udp( n2n_sn_t * sss,
 
         cmn2.ttl = N2N_DEFAULT_TTL;
         cmn2.pc = n2n_register_super_ack;
-        cmn2.flags = N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
+        cmn2.flags = N2N_FLAGS_FROM_SUPERNODE;
         memcpy( cmn2.community, cmn.community, sizeof(n2n_community_t) );
 
         memcpy( &(ack.cookie), &(regs.cookie), sizeof(n2n_cookie_t) );

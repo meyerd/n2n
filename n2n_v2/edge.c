@@ -1242,12 +1242,6 @@ static void send_packet2net(n2n_edge_t * eee,
 
     memset( &pkt, 0, sizeof(pkt) );
 
-    if(!dest && eee->local_sock_ena) {
-        /* sent via supernode, so we add local socket if present*/
-        cmn.flags |= N2N_FLAGS_LOCAL_SOCKET;
-        pkt.local_sock = eee->local_sock;
-    }
-
     tx_transop_idx = edge_choose_tx_transop( eee );
 
     pkt.transform = eee->transop[tx_transop_idx].transform_id;
@@ -1732,7 +1726,6 @@ static void readFromIPSocket( n2n_edge_t * eee )
 
     /* for PACKET packages */
     n2n_PACKET_t pkt;
-    n2n_sock_t * remote_local_sock;
 
     /* for REGISTER packages */
     n2n_REGISTER_t reg;
@@ -1791,32 +1784,16 @@ static void readFromIPSocket( n2n_edge_t * eee )
             /* process PACKET */
             decode_PACKET( &pkt, &cmn, udp_buf, &rem, &idx );
 
-            if ( cmn.flags & N2N_FLAGS_SOCKET )
-            {
-                orig_sender = &(pkt.sock);
-            }
-            if ( cmn.flags & N2N_FLAGS_LOCAL_SOCKET )
-            {
-                remote_local_sock = &(pkt.local_sock);
-            } else {
-                remote_local_sock = NULL;
-            }
-
             traceEvent(TRACE_INFO, "Rx PACKET from %s (%s)",
                        sock_to_cstr(sockbuf1, &sender),
                        sock_to_cstr(sockbuf2, orig_sender) );
 
-            handle_PACKET( eee, &cmn, &pkt, orig_sender, remote_local_sock,
+            handle_PACKET( eee, &cmn, &pkt, orig_sender, NULL,
                     udp_buf+idx, recvlen-idx );
             break;
         case MSG_TYPE_REGISTER:
             /* Another edge is registering with us */
             decode_REGISTER( &reg, &cmn, udp_buf, &rem, &idx );
-
-            if ( cmn.flags & N2N_FLAGS_SOCKET )
-            {
-                orig_sender = &(reg.sock);
-            }
 
             traceEvent(TRACE_INFO,
                     "Rx REGISTER src=%s dst=%s from peer %s (%s)",
