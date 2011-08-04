@@ -190,7 +190,7 @@ struct peer_info {
 typedef struct peer_info peer_info_t;
 
 /* sglib hash table defines */
-#define PEER_HASH_TAB_SIZE 50
+#define PEER_HASH_TAB_SIZE 53 // prime number
 
 /* #define PEER_INFO_COMPARATOR(e1, e2)    (\
 	for(int i = 0; i < N2N_MAC_SIZE; i++) {\
