@@ -393,7 +393,6 @@
 }
 
 #define SGLIB_LIST_LEN(type, list, next, result) {\
-  type *_ce_;\
   (result) = 0;\
   SGLIB_LIST_MAP_ON_ELEMENTS(type, list, _ce_, next, (result)++);\
 }

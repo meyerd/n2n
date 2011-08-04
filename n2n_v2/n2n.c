@@ -38,9 +38,6 @@ unsigned int peer_info_t_hash_function(peer_info_t *e) {
 	#error not implemented yet!
 #else 
 	uint32_t tmp = 0;
-#ifndef WIN32
-#pragma unroll
-#endif
 	for(; i < N2N_MAC_SIZE / 2; i++) {
 		tmp |= (e->mac_addr[i] ^ e->mac_addr[i<<1]) << (N2N_MAC_SIZE / 2 - i - 1);
 	}
@@ -395,10 +392,10 @@ size_t clear_hashed_peer_info_t_list(peer_info_t ** peer_list) {
 
 static uint8_t hex2byte( const char * s )
 {
-  char tmp[3];
+/*  char tmp[3];
   tmp[0]=s[0];
   tmp[1]=s[1];
-  tmp[2]=0; /* NULL term */
+  tmp[2]=0; */ /* NULL term */
 
   return((uint8_t)strtol( s, NULL, 16 ));
 }
@@ -428,22 +425,20 @@ extern int str2mac( uint8_t * outmac /* 6 bytes */, const char * s )
 extern char * sock_to_cstr( n2n_sock_str_t out,
                             const n2n_sock_t * sock )
 {
-    int r;
-
     if ( NULL == out ) { return NULL; }
     memset(out, 0, N2N_SOCKBUF_SIZE);
 
     if ( AF_INET6 == sock->family )
     {
         /* INET6 not written yet */
-        r = snprintf( out, N2N_SOCKBUF_SIZE, "XXXX:%hu", sock->port );
+        snprintf( out, N2N_SOCKBUF_SIZE, "XXXX:%hu", sock->port );
         return out;
     }
     else
     {
         const uint8_t * a = sock->addr.v4;
-        r = snprintf( out, N2N_SOCKBUF_SIZE, "%hu.%hu.%hu.%hu:%hu", 
-                      (a[0] & 0xff), (a[1] & 0xff), (a[2] & 0xff), (a[3] & 0xff), sock->port );
+        snprintf( out, N2N_SOCKBUF_SIZE, "%hu.%hu.%hu.%hu:%hu", 
+                  (a[0] & 0xff), (a[1] & 0xff), (a[2] & 0xff), (a[3] & 0xff), sock->port );
         return out;
     }
 }

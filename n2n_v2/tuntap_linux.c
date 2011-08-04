@@ -137,7 +137,6 @@ void tuntap_close(struct tuntap_dev *tuntap) {
 void tuntap_get_address(struct tuntap_dev *tuntap)
 {
     FILE * fp=NULL;
-    ssize_t nread=0;
     char buf[N2N_LINUX_SYSTEMCMD_SIZE];
 
     /* Would rather have a more direct way to get the inet address but a netlink
@@ -151,7 +150,7 @@ void tuntap_get_address(struct tuntap_dev *tuntap)
     if (fp )
     {
         memset(buf,0,N2N_LINUX_SYSTEMCMD_SIZE); /* make sure buf is NULL terminated. */
-        nread=fread(buf, 1, 15, fp);
+        fread(buf, 1, 15, fp);
         fclose(fp);
         fp=NULL;
 

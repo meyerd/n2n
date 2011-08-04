@@ -584,10 +584,11 @@ static void send_register( n2n_edge_t * eee,
 {
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx;
-    ssize_t sent;
     n2n_common_t cmn = {0};
-    n2n_REGISTER_t reg = {0};
+    n2n_REGISTER_t reg;
     n2n_sock_str_t sockbuf;
+
+    memset(&reg, 0, sizeof(n2n_REGISTER_t));
 
     cmn.ttl=N2N_DEFAULT_TTL;
     cmn.pc = n2n_register;
@@ -612,8 +613,7 @@ static void send_register( n2n_edge_t * eee,
                 sock_to_cstr( sockbuf, remote_peer ) );
 
 
-    sent = sendto_sock( eee->udp_sock, pktbuf, idx, remote_peer );
-
+    sendto_sock( eee->udp_sock, pktbuf, idx, remote_peer );
 }
 
 
@@ -623,7 +623,6 @@ static void send_register_super( n2n_edge_t * eee,
 {
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx;
-    ssize_t sent;
     n2n_common_t cmn;
     n2n_REGISTER_SUPER_t reg;
     n2n_sock_str_t sockbuf;
@@ -653,8 +652,7 @@ static void send_register_super( n2n_edge_t * eee,
                 sock_to_cstr( sockbuf, supernode ) );
 
 
-    sent = sendto_sock( eee->udp_sock, pktbuf, idx, supernode );
-
+    sendto_sock( eee->udp_sock, pktbuf, idx, supernode );
 }
 
 
@@ -665,7 +663,6 @@ static void send_register_ack( n2n_edge_t * eee,
 {
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx;
-    ssize_t sent;
     n2n_common_t cmn;
     n2n_REGISTER_ACK_t ack;
     n2n_sock_str_t sockbuf;
@@ -689,7 +686,7 @@ static void send_register_ack( n2n_edge_t * eee,
                 sock_to_cstr( sockbuf, remote_peer ) );
 
 
-    sent = sendto_sock( eee->udp_sock, pktbuf, idx, remote_peer );
+    sendto_sock( eee->udp_sock, pktbuf, idx, remote_peer );
 }
 
 
@@ -912,8 +909,7 @@ static void update_peer_address(n2n_edge_t * eee,
                                 time_t when)
 {
     peer_info_t *scan = NULL;
-	peer_info_t tmp;
-    struct peer_info *prev = NULL; /* use to remove bad registrations. */
+    peer_info_t tmp;
     n2n_sock_str_t sockbuf1;
     n2n_sock_str_t sockbuf2; /* don't clobber sockbuf1 if writing two addresses to trace */
     macstr_t mac_buf;
@@ -930,8 +926,8 @@ static void update_peer_address(n2n_edge_t * eee,
         return;
     }
 
-	memcpy(tmp.mac_addr, mac, sizeof(n2n_mac_t));
-	scan = sglib_hashed_peer_info_t_find_member(eee->known_peers, &tmp);
+    memcpy(tmp.mac_addr, mac, sizeof(n2n_mac_t));
+    scan = sglib_hashed_peer_info_t_find_member(eee->known_peers, &tmp);
 
     if ( scan == NULL )
     {
@@ -1159,7 +1155,6 @@ static int send_PACKET( n2n_edge_t * eee,
                         size_t pktlen,
                         n2n_sock_t * destination)
 {
-    ssize_t s;
     n2n_sock_str_t sockbuf;
 
     /* hexdump( pktbuf, pktlen ); */
@@ -1167,8 +1162,7 @@ static int send_PACKET( n2n_edge_t * eee,
 
     traceEvent( TRACE_INFO, "send_PACKET to %s", sock_to_cstr( sockbuf, destination ) );
 
-    s = sendto_sock( eee->udp_sock, pktbuf, pktlen, destination );
-
+    sendto_sock( eee->udp_sock, pktbuf, pktlen, destination );
     return 0;
 }
 
@@ -1458,16 +1452,15 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
 {
     uint8_t             udp_buf[N2N_PKT_BUF_SIZE];      /* Compete UDP packet */
     ssize_t             recvlen;
-    ssize_t             sendlen;
     struct sockaddr_in  sender_sock;
     socklen_t           i;
     size_t              msg_len;
     time_t              now;
-	macstr_t			mac_buf;
-	n2n_sock_str_t		sockbuf;
-	peer_info_t *		lpi = NULL;
-	struct sglib_hashed_peer_info_t_iterator    it;
-	int					c;
+    macstr_t		mac_buf;
+    n2n_sock_str_t	sockbuf;
+    peer_info_t *	lpi = NULL;
+    struct sglib_hashed_peer_info_t_iterator    it;
+    int			c;
 
     now = time(NULL);
     i = sizeof(sender_sock);
@@ -1663,8 +1656,8 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
                          "uptime %lu\n",
                          time(NULL) - eee->start_time );
 
-	msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-						"paths  super:(tx),(rx) p2p: (tx),(rx)\n");
+    msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
+			"paths  super:(tx),(rx) p2p: (tx),(rx)\n");
     msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
                          "packets      %u,%u     %u,%u\n",
                          (unsigned int)eee->tx_sup,
@@ -1672,12 +1665,12 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
 			 (unsigned int)eee->tx_p2p,
 			 (unsigned int)eee->rx_p2p );
 
-	msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-						 "byte/s       %u,%u     %u,%u\n",
-						 (unsigned int)eee->tx_bps_sup,
-						 (unsigned int)eee->rx_bps_sup,
-						 (unsigned int)eee->tx_bps_p2p,
-						 (unsigned int)eee->rx_bps_p2p );
+   msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
+			 "byte/s       %u,%u     %u,%u\n",
+			 (unsigned int)eee->tx_bps_sup,
+			 (unsigned int)eee->rx_bps_sup,
+			 (unsigned int)eee->tx_bps_p2p,
+			 (unsigned int)eee->rx_bps_p2p );
 
     msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
                          "trans:null |%6u|%6u|\n"
@@ -1702,9 +1695,8 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
     traceEvent(TRACE_DEBUG, "mgmt status sending: %s", udp_buf );
 
 
-    sendlen = sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
+    sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
                       (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
-
 }
 
 
