@@ -36,11 +36,20 @@ unsigned int peer_info_t_hash_function(peer_info_t *e) {
 #if N2N_MAC_SIZE != 6
 	#error not implemented yet!
 #else 
-    short i = 0;
+	short i = 0;
 	uint32_t tmp = 0;
+	/* Q: why is the hashing implemented like this?
+	 * A: because the MAC addresses basically consist of two parts
+	 *    the first three bytes are a organisation unique identifier
+	 *    the second three bytes are a interface unique identifier
+	 *    therefore if all the (randomly) generated MAC addresses of the
+	 *    tun/tap interfaces all have the same organisation unique identifier
+	 *    the hashing performance is best if only the interface unique identifier
+	 *    is taken into account
+	 */
 	for(; i < N2N_MAC_SIZE / 2; i++) {
-		tmp |= (e->mac_addr[i<<1] ^ e->mac_addr[(i<<1)+1])
-            << (N2N_MAC_SIZE/2-1-i);
+		tmp |= (e->mac_addr[i] ^ e->mac_addr[(N2N_MAC_SIZE/2)+1])
+	                                          << (N2N_MAC_SIZE/2-1-i);
 	}
 	return tmp;
 #endif
