@@ -111,7 +111,7 @@ static uint16_t reg_lifetime( n2n_sn_t * sss )
 /** Update the edge table with the details of the edge which contacted the
  *  supernode. */
 static int update_edge( n2n_sn_t * sss, 
-                        const n2n_mac_t edgeMac,
+                        const n2n_REGISTER_SUPER_t * reg,
                         const n2n_community_t community,
                         const n2n_sock_t * sender_sock,
                         time_t now)
@@ -121,10 +121,10 @@ static int update_edge( n2n_sn_t * sss,
     struct peer_info *  scan;
 
     traceEvent( TRACE_DEBUG, "update_edge for %s [%s]",
-                macaddr_str( mac_buf, edgeMac ),
+                macaddr_str( mac_buf, reg->edgeMac ),
                 sock_to_cstr( sockbuf, sender_sock ) );
 
-    scan = find_peer_by_mac( sss->edges, edgeMac );
+    scan = find_peer_by_mac( sss->edges, reg->edgeMac );
 
     if ( NULL == scan )
     {
@@ -133,33 +133,67 @@ static int update_edge( n2n_sn_t * sss,
         scan = (struct peer_info*)calloc(1, sizeof(struct peer_info)); /* deallocated in purge_expired_registrations */
 
         memcpy(scan->community_name, community, sizeof(n2n_community_t) );
-        memcpy(&(scan->mac_addr), edgeMac, sizeof(n2n_mac_t));
+        memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
         memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
+
+        if(reg->aflags & N2N_AFLAGS_LOCAL_SOCKET) {
+            scan->num_sockets = 2;
+            scan->sockets = malloc(scan->num_sockets*sizeof(n2n_sock_t));
+            scan->sockets[1] = reg->local_sock;
+        } else {
+            scan->num_sockets = 1;
+            scan->sockets = malloc(scan->num_sockets*sizeof(n2n_sock_t));
+        }
+        scan->sockets[0] = scan->sock;
 
         /* insert this guy at the head of the edges list */
 		sglib_hashed_peer_info_t_add(sss->edges, scan);
 
         traceEvent( TRACE_INFO, "update_edge created   %s ==> %s",
-                    macaddr_str( mac_buf, edgeMac ),
+                    macaddr_str( mac_buf, reg->edgeMac ),
                     sock_to_cstr( sockbuf, sender_sock ) );
     }
     else
     {
         /* Known */
-        if ( (0 != memcmp(community, scan->community_name, sizeof(n2n_community_t))) ||
-             (0 != sock_equal(sender_sock, &(scan->sock) )) )
+        int num_changes = 0;
+        if (0 != memcmp(community, scan->community_name, sizeof(n2n_community_t)))
         {
             memcpy(scan->community_name, community, sizeof(n2n_community_t) );
-            memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
-
-            traceEvent( TRACE_INFO, "update_edge updated   %s ==> %s",
-                        macaddr_str( mac_buf, edgeMac ),
-                        sock_to_cstr( sockbuf, sender_sock ) );
+            num_changes++;
         }
-        else
-        {
+        if (0 != sock_equal(sender_sock, &(scan->sock) )) {
+            memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
+            memcpy(scan->sockets, sender_sock, sizeof(n2n_sock_t));
+            num_changes++;
+        }
+        if (scan->num_sockets == 1) {
+            if (reg->aflags & N2N_AFLAGS_LOCAL_SOCKET) {
+                scan->num_sockets = 2;
+                free(scan->sockets);
+                scan->sockets = malloc(scan->num_sockets*sizeof(n2n_sock_t));
+                scan->sockets[0] = scan->sock;
+                scan->sockets[1] = reg->local_sock;
+            }
+        } else {
+            if (reg->aflags & N2N_AFLAGS_LOCAL_SOCKET) {
+                if (0 != sock_equal(&(reg->local_sock), scan->sockets+1 )) {
+                    memcpy(scan->sockets+1, &(reg->local_sock), sizeof(n2n_sock_t));
+                }
+            } else {
+                scan->num_sockets = 1;
+                free(scan->sockets);
+                scan->sockets = malloc(scan->num_sockets*sizeof(n2n_sock_t));
+                scan->sockets[0] = scan->sock;
+            }
+        }
+        if (num_changes) {
+            traceEvent( TRACE_INFO, "update_edge updated   %s ==> %s",
+                        macaddr_str( mac_buf, reg->edgeMac ),
+                        sock_to_cstr( sockbuf, sender_sock ) );
+        } else {
             traceEvent( TRACE_DEBUG, "update_edge unchanged %s ==> %s",
-                        macaddr_str( mac_buf, edgeMac ),
+                        macaddr_str( mac_buf, reg->edgeMac ),
                         sock_to_cstr( sockbuf, sender_sock ) );
         }
 
@@ -571,7 +605,7 @@ static int process_udp( n2n_sn_t * sss,
                     macaddr_str( mac_buf, regs.edgeMac ),
                     sock_to_cstr( sockbuf, &(ack.sock) ) );
 
-        update_edge( sss, regs.edgeMac, cmn.community, &(ack.sock), now );
+        update_edge( sss, &regs, cmn.community, &(ack.sock), now );
 
         encode_REGISTER_SUPER_ACK( encbuf, &encx, &cmn2, &ack );
 

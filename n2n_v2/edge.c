@@ -621,12 +621,10 @@ static void send_register_super( n2n_edge_t * eee,
 {
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx;
-    n2n_common_t cmn;
-    n2n_REGISTER_SUPER_t reg;
+    n2n_common_t cmn = {0};
+    n2n_REGISTER_SUPER_t reg = {0};
     n2n_sock_str_t sockbuf;
 
-    memset(&cmn, 0, sizeof(cmn) );
-    memset(&reg, 0, sizeof(reg) );
     cmn.ttl=N2N_DEFAULT_TTL;
     cmn.pc = n2n_register_super;
     cmn.flags = 0;
@@ -637,11 +635,17 @@ static void send_register_super( n2n_edge_t * eee,
         eee->last_cookie[idx] = rand() % 0xff;
     }
 
+    reg.aflags = 0;
     memcpy( reg.cookie, eee->last_cookie, N2N_COOKIE_SIZE );
     reg.auth.scheme=0; /* No auth yet */
 
     idx=0;
     encode_mac( reg.edgeMac, &idx, eee->device.mac_addr );
+
+    if(eee->local_sock_ena) {
+        reg.aflags |= N2N_AFLAGS_LOCAL_SOCKET;
+        reg.local_sock = eee->local_sock;
+    }
 
     idx=0;
     encode_REGISTER_SUPER( pktbuf, &idx, &cmn, &reg );
