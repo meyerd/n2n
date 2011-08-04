@@ -380,6 +380,7 @@ static int process_udp( n2n_sn_t * sss,
                         time_t now)
 {
     n2n_common_t        cmn; /* common fields in the packet header */
+    n2n_common_t        cmn2; /* common fields of newly generated packets */
     size_t              rem;
     size_t              idx;
     size_t              msg_type;
@@ -387,7 +388,20 @@ static int process_udp( n2n_sn_t * sss,
     macstr_t            mac_buf;
     macstr_t            mac_buf2;
     n2n_sock_str_t      sockbuf;
+    const uint8_t *     rec_buf; /* either udp_buf or encbuf */
+    int                 unicast; /* non-zero if unicast */
+    size_t              encx=0;
+    uint8_t             encbuf[N2N_SN_PKTBUF_SIZE];
 
+    /* for PACKET packages */
+    n2n_PACKET_t                    pkt; 
+
+    /* for REGISTER packages */
+    n2n_REGISTER_t                  reg;
+
+    /* for REGISTER_SUPER packages */
+    n2n_REGISTER_SUPER_t            regs;
+    n2n_REGISTER_SUPER_ACK_t        ack;
 
     traceEvent( TRACE_DEBUG, "process_udp(%lu)", udp_size );
 
@@ -419,18 +433,12 @@ static int process_udp( n2n_sn_t * sss,
 
     --(cmn.ttl); /* The value copied into all forwarded packets. */
 
-    if ( msg_type == MSG_TYPE_PACKET )
-    {
+    switch(msg_type) {
+    case MSG_TYPE_PACKET:
         /* PACKET from one edge to another edge via supernode. */
 
         /* pkt will be modified in place and recoded to an output of potentially
          * different size due to addition of the socket.*/
-        n2n_PACKET_t                    pkt; 
-        n2n_common_t                    cmn2;
-        uint8_t                         encbuf[N2N_SN_PKTBUF_SIZE];
-        size_t                          encx=0;
-        int                             unicast; /* non-zero if unicast */
-        const uint8_t *                 rec_buf; /* either udp_buf or encbuf */
 
 
         sss->stats.last_fwd=now;
@@ -483,17 +491,10 @@ static int process_udp( n2n_sn_t * sss,
         {
             try_broadcast( sss, &cmn, pkt.srcMac, rec_buf, encx );
         }
-    }/* MSG_TYPE_PACKET */
-    else if ( msg_type == MSG_TYPE_REGISTER )
-    {
+        break;
+    case MSG_TYPE_REGISTER:
         /* Forwarding a REGISTER from one edge to the next */
 
-        n2n_REGISTER_t                  reg;
-        n2n_common_t                    cmn2;
-        uint8_t                         encbuf[N2N_SN_PKTBUF_SIZE];
-        size_t                          encx=0;
-        int                             unicast; /* non-zero if unicast */
-        const uint8_t *                 rec_buf; /* either udp_buf or encbuf */
 
         sss->stats.last_fwd=now;
         decode_REGISTER( &reg, &cmn, udp_buf, &rem, &idx );
@@ -541,33 +542,24 @@ static int process_udp( n2n_sn_t * sss,
         {
             traceEvent( TRACE_ERROR, "Rx REGISTER with multicast destination" );
         }
-
-    }
-    else if ( msg_type == MSG_TYPE_REGISTER_ACK )
-    {
+        break;
+    case MSG_TYPE_REGISTER_ACK:
         traceEvent( TRACE_DEBUG, "Rx REGISTER_ACK (NOT IMPLEMENTED) SHould not be via supernode" );
-    }
-    else if ( msg_type == MSG_TYPE_REGISTER_SUPER )
-    {
-        n2n_REGISTER_SUPER_t            reg;
-        n2n_REGISTER_SUPER_ACK_t        ack;
-        n2n_common_t                    cmn2;
-        uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
-        size_t                          encx=0;
-
+        break;
+    case MSG_TYPE_REGISTER_SUPER:
         /* Edge requesting registration with us.  */
         
         sss->stats.last_reg_super=now;
         ++(sss->stats.reg_super);
-        decode_REGISTER_SUPER( &reg, &cmn, udp_buf, &rem, &idx );
+        decode_REGISTER_SUPER( &regs, &cmn, udp_buf, &rem, &idx );
 
         cmn2.ttl = N2N_DEFAULT_TTL;
         cmn2.pc = n2n_register_super_ack;
         cmn2.flags = N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
         memcpy( cmn2.community, cmn.community, sizeof(n2n_community_t) );
 
-        memcpy( &(ack.cookie), &(reg.cookie), sizeof(n2n_cookie_t) );
-        memcpy( ack.edgeMac, reg.edgeMac, sizeof(n2n_mac_t) );
+        memcpy( &(ack.cookie), &(regs.cookie), sizeof(n2n_cookie_t) );
+        memcpy( ack.edgeMac, regs.edgeMac, sizeof(n2n_mac_t) );
         ack.lifetime = reg_lifetime( sss );
 
         ack.sock.family = AF_INET;
@@ -578,22 +570,25 @@ static int process_udp( n2n_sn_t * sss,
         memset( &(ack.sn_bak), 0, sizeof(n2n_sock_t) );
 
         traceEvent( TRACE_DEBUG, "Rx REGISTER_SUPER for %s [%s]",
-                    macaddr_str( mac_buf, reg.edgeMac ),
+                    macaddr_str( mac_buf, regs.edgeMac ),
                     sock_to_cstr( sockbuf, &(ack.sock) ) );
 
-        update_edge( sss, reg.edgeMac, cmn.community, &(ack.sock), now );
+        update_edge( sss, regs.edgeMac, cmn.community, &(ack.sock), now );
 
-        encode_REGISTER_SUPER_ACK( ackbuf, &encx, &cmn2, &ack );
+        encode_REGISTER_SUPER_ACK( encbuf, &encx, &cmn2, &ack );
 
-        sendto( sss->sock, ackbuf, encx, 0, 
+        sendto( sss->sock, encbuf, encx, 0, 
                 (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in) );
 
         traceEvent( TRACE_DEBUG, "Tx REGISTER_SUPER_ACK for %s [%s]",
-                    macaddr_str( mac_buf, reg.edgeMac ),
+                    macaddr_str( mac_buf, regs.edgeMac ),
                     sock_to_cstr( sockbuf, &(ack.sock) ) );
-
+        break;
+    default:
+        /* Not a known message type */
+        traceEvent(TRACE_WARNING, "Unable to handle packet type %d: ignored", (signed int)msg_type);
+        break;
     }
-
 
     return 0;
 }
