@@ -145,6 +145,15 @@ struct n2n_PACKET
 
 typedef struct n2n_PACKET n2n_PACKET_t;
 
+struct n2n_ETHFRAMEHDR
+{
+    n2n_mac_t           srcMac;
+    n2n_mac_t           dstMac;
+ /* uint16_t            ethertype; */ /* is there a reason to use this? */
+};
+
+typedef struct n2n_ETHFRAMEHDR n2n_ETHFRAMEHDR_t;
+
 
 /* Linked with n2n_register_super in n2n_pc_t. Only from edge to supernode. */
 struct n2n_REGISTER_SUPER
@@ -320,6 +329,9 @@ int decode_PACKET( n2n_PACKET_t * pkt,
                    const uint8_t * base,
                    size_t * rem,
                    size_t * idx );
+
+void decode_ETHFRAMEHDR( n2n_ETHFRAMEHDR_t * eth,
+                        const uint8_t * base );
 
 int copy_ETHFRAMEHDR( uint8_t * base,
                       uint8_t * pkt);
