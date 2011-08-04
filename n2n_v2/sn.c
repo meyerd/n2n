@@ -392,6 +392,7 @@ static int process_udp( n2n_sn_t * sss,
     int                 unicast; /* non-zero if unicast */
     size_t              encx=0;
     uint8_t             encbuf[N2N_SN_PKTBUF_SIZE];
+    n2n_ETHFRAMEHDR_t               eth;
 
     /* for PACKET packages */
     n2n_PACKET_t                    pkt; 
@@ -443,13 +444,14 @@ static int process_udp( n2n_sn_t * sss,
 
         sss->stats.last_fwd=now;
         decode_PACKET( &pkt, &cmn, udp_buf, &rem, &idx );
+        decode_ETHFRAMEHDR( &eth, udp_buf+idx );
 
-        unicast = (0 == is_multi_broadcast(pkt.dstMac) );
+        unicast = (0 == is_multi_broadcast(eth.dstMac) );
 
         traceEvent( TRACE_DEBUG, "Rx PACKET (%s) %s -> %s %s",
                     (unicast?"unicast":"multicast"),
-                    macaddr_str( mac_buf, pkt.srcMac ),
-                    macaddr_str( mac_buf2, pkt.dstMac ),
+                    macaddr_str( mac_buf, eth.srcMac ),
+                    macaddr_str( mac_buf2, eth.dstMac ),
                     (from_supernode?"from sn":"local") );
 
         if ( !from_supernode )
@@ -485,11 +487,11 @@ static int process_udp( n2n_sn_t * sss,
         /* Common section to forward the final product. */
         if ( unicast )
         {
-            try_forward( sss, &cmn, pkt.dstMac, rec_buf, encx );
+            try_forward( sss, &cmn, eth.dstMac, rec_buf, encx );
         }
         else
         {
-            try_broadcast( sss, &cmn, pkt.srcMac, rec_buf, encx );
+            try_broadcast( sss, &cmn, eth.srcMac, rec_buf, encx );
         }
         break;
     case MSG_TYPE_REGISTER:

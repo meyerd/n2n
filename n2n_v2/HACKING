@@ -214,16 +214,7 @@ PACKET message FORMAT
 
 The PACKET message is of main concern as it is the most frequently transferred
 as it contains encapsulated ethernet packets. For these, PktFormat is set to
-n2n_packet and it goes on as follows
-
-    0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-20 ! Source MAC Address                                            :
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-24 :                               ! Destination MAC Address       :
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-28 :                                                               !
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+n2n_packet and it goes on as follows:
 
 If the N2N_FLAGS_SOCKET-Flag is set, the socket of the original sender of the
 packet is encoded next. IPv4 or IPv6 is determined by the Socket Flags.

@@ -1241,8 +1241,6 @@ static void send_packet2net(n2n_edge_t * eee,
     dest = find_peer_destination(eee, destMac, &destination);
 
     memset( &pkt, 0, sizeof(pkt) );
-    memcpy( pkt.srcMac, eee->device.mac_addr, N2N_MAC_SIZE);
-    memcpy( pkt.dstMac, destMac, N2N_MAC_SIZE);
 
     if(!dest && eee->local_sock_ena) {
         /* sent via supernode, so we add local socket if present*/
@@ -1387,6 +1385,7 @@ static int handle_PACKET( n2n_edge_t * eee,
     uint8_t *           eth_payload=NULL;
     int                 retval = -1;
     time_t              now;
+    n2n_ETHFRAMEHDR_t   eth;
 
     now = time(NULL);
 
@@ -1409,8 +1408,9 @@ static int handle_PACKET( n2n_edge_t * eee,
 		eee->rx_bit_p2p += psize;
     }
 
+    decode_ETHFRAMEHDR(&eth, payload);
     /* Update the sender in peer table entry */
-    check_peer( eee, from_supernode, pkt->srcMac, orig_sender,
+    check_peer( eee, from_supernode, eth.srcMac, orig_sender,
             remote_local_sock );
 
     /* Handle transform. */

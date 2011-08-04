@@ -99,8 +99,6 @@ static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_com
     memcpy( cmn.community, c, N2N_COMMUNITY_SIZE );
 
     memset( &pkt, 0, sizeof(pkt) );
-    memcpy( pkt.srcMac, destMac, N2N_MAC_SIZE);
-    memcpy( pkt.dstMac, destMac, N2N_MAC_SIZE);
 
     pkt.sock.family=0; /* do not encode sock */
 

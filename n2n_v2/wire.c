@@ -426,8 +426,6 @@ int encode_PACKET( uint8_t * base,
 {
     int retval=0;
     retval += encode_common( base, idx, common );
-    retval += encode_mac( base, idx, pkt->srcMac );
-    retval += encode_mac( base, idx, pkt->dstMac );
     if ( common->flags & N2N_FLAGS_SOCKET )
     {
         retval += encode_sock( base, idx, &(pkt->sock) );
@@ -450,8 +448,6 @@ int decode_PACKET( n2n_PACKET_t * pkt,
 {
     size_t retval=0;
     memset( pkt, 0, sizeof(n2n_PACKET_t) );
-    retval += decode_mac( pkt->srcMac, base, rem, idx );
-    retval += decode_mac( pkt->dstMac, base, rem, idx );
     if ( cmn->flags & N2N_FLAGS_SOCKET )
     {
         retval += decode_sock( &(pkt->sock), base, rem, idx );
