@@ -86,7 +86,7 @@ int main( int argc, char * argv[] )
 
 static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c )
 {
-    n2n_mac_t destMac={0,1,2,3,4,5};
+    /* n2n_mac_t destMac={0,1,2,3,4,5}; */
     n2n_common_t cmn;
     n2n_PACKET_t pkt;
     size_t idx;
