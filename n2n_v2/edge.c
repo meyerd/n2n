@@ -585,10 +585,8 @@ static void send_register( n2n_edge_t * eee,
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx;
     n2n_common_t cmn = {0};
-    n2n_REGISTER_t reg;
+    n2n_REGISTER_t reg = {{0}};
     n2n_sock_str_t sockbuf;
-
-    memset(&reg, 0, sizeof(n2n_REGISTER_t));
 
     cmn.ttl=N2N_DEFAULT_TTL;
     cmn.pc = n2n_register;
@@ -1696,7 +1694,7 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
 
 
     sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
-                      (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
+            (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
 }
 
 
@@ -1722,6 +1720,21 @@ static void readFromIPSocket( n2n_edge_t * eee )
     time_t              now=0;
 
     size_t              i;
+
+    /* for PACKET packages */
+    n2n_PACKET_t pkt;
+    n2n_sock_t * remote_local_sock;
+
+    /* for REGISTER packages */
+    n2n_REGISTER_t reg;
+    peer_info_t tmp;
+
+    /* for REGISTER_ACK packages */
+    n2n_REGISTER_ACK_t ra;
+
+    /* For REGISTER_SUPER_ACK packages */
+    n2n_REGISTER_SUPER_ACK_t rsa;
+
 
     i = sizeof(sender_sock);
     recvlen = recvfrom(eee->udp_sock, udp_buf, N2N_PKT_BUF_SIZE, 0/*flags*/,
@@ -1764,12 +1777,9 @@ static void readFromIPSocket( n2n_edge_t * eee )
 
     if( 0 == memcmp(cmn.community, eee->community_name, N2N_COMMUNITY_SIZE) )
     {
-        if( msg_type == MSG_TYPE_PACKET)
-        {
-            /* process PACKET - most frequent so first in list. */
-            n2n_PACKET_t pkt;
-            n2n_sock_t * remote_local_sock;
-
+        switch(msg_type) {
+        case MSG_TYPE_PACKET:
+            /* process PACKET */
             decode_PACKET( &pkt, &cmn, udp_buf, &rem, &idx );
 
             if ( cmn.flags & N2N_FLAGS_SOCKET )
@@ -1789,13 +1799,9 @@ static void readFromIPSocket( n2n_edge_t * eee )
 
             handle_PACKET( eee, &cmn, &pkt, orig_sender, remote_local_sock,
                     udp_buf+idx, recvlen-idx );
-        }
-        else if(msg_type == MSG_TYPE_REGISTER)
-        {
+            break;
+        case MSG_TYPE_REGISTER:
             /* Another edge is registering with us */
-            n2n_REGISTER_t reg;
-            peer_info_t tmp;
-
             decode_REGISTER( &reg, &cmn, udp_buf, &rem, &idx );
 
             if ( cmn.flags & N2N_FLAGS_SOCKET )
@@ -1822,11 +1828,9 @@ static void readFromIPSocket( n2n_edge_t * eee )
             }
 
             send_register_ack(eee, orig_sender, &reg);
-        }
-        else if(msg_type == MSG_TYPE_REGISTER_ACK)
-        {
+            break;
+        case MSG_TYPE_REGISTER_ACK:
             /* Peer edge is acknowledging our register request */
-            n2n_REGISTER_ACK_t ra;
 
             decode_REGISTER_ACK( &ra, &cmn, udp_buf, &rem, &idx );
 
@@ -1843,32 +1847,29 @@ static void readFromIPSocket( n2n_edge_t * eee )
 
             /* Move from pending_peers to known_peers; ignore if not in pending. */
             set_peer_operational( eee, ra.srcMac, &sender );
-        }
-        else if(msg_type == MSG_TYPE_REGISTER_SUPER_ACK)
-        {
-            n2n_REGISTER_SUPER_ACK_t ra;
-
+            break;
+        case MSG_TYPE_REGISTER_SUPER_ACK:
             if ( eee->sn_wait )
             {
-                decode_REGISTER_SUPER_ACK( &ra, &cmn, udp_buf, &rem, &idx );
+                decode_REGISTER_SUPER_ACK( &rsa, &cmn, udp_buf, &rem, &idx );
 
-                if ( ra.sock.family )
+                if ( rsa.sock.family )
                 {
-                    orig_sender = &(ra.sock);
+                    orig_sender = &(rsa.sock);
                 }
 
                 traceEvent(TRACE_NORMAL, "Rx REGISTER_SUPER_ACK myMAC=%s [%s] (external %s). Attempts %u",
-                           macaddr_str( mac_buf1, ra.edgeMac ),
+                           macaddr_str( mac_buf1, rsa.edgeMac ),
                            sock_to_cstr(sockbuf1, &sender),
                            sock_to_cstr(sockbuf2, orig_sender), 
                            (unsigned int)eee->sup_attempts );
 
-                if ( 0 == memcmp( ra.cookie, eee->last_cookie, N2N_COOKIE_SIZE ) )
+                if ( 0 == memcmp( rsa.cookie, eee->last_cookie, N2N_COOKIE_SIZE ) )
                 {
-                    if ( ra.num_sn > 0 )
+                    if ( rsa.num_sn > 0 )
                     {
                         traceEvent(TRACE_NORMAL, "Rx REGISTER_SUPER_ACK backup supernode at %s",
-                                   sock_to_cstr(sockbuf1, &(ra.sn_bak) ) );
+                                   sock_to_cstr(sockbuf1, &(rsa.sn_bak) ) );
                     }
 
                     eee->last_p2p = now;
@@ -1879,7 +1880,7 @@ static void readFromIPSocket( n2n_edge_t * eee )
                     /* REVISIT: store sn_back */
                     /* don't adjust lifetime according to supernode - this value should be specified
                      * by the client (because dependent on NAT/firewall) (lukas) 
-                    eee->register_lifetime = ra.lifetime;
+                    eee->register_lifetime = rsa.lifetime;
                     eee->register_lifetime = MAX( eee->register_lifetime, REGISTER_SUPER_INTERVAL_MIN );
                     eee->register_lifetime = MIN( eee->register_lifetime, REGISTER_SUPER_INTERVAL_MAX );
                      */
@@ -1893,13 +1894,12 @@ static void readFromIPSocket( n2n_edge_t * eee )
             {
                 traceEvent( TRACE_WARNING, "Rx REGISTER_SUPER_ACK with no outstanding REGISTER_SUPER." );
             }
-        }
-        else
-        {
+            break;
+        default:
             /* Not a known message type */
             traceEvent(TRACE_WARNING, "Unable to handle packet type %d: ignored", (signed int)msg_type);
-            return;
-        }
+            break;
+        } /* end switch(msg_type) */
     } /* if (community match) */
     else
     {

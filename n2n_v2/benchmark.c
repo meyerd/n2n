@@ -42,12 +42,12 @@ int main( int argc, char * argv[] )
     struct timeval t1;
     struct timeval t2;
 
-    size_t i;
+    unsigned long int i;
     size_t n;
     size_t idx;
     size_t rem;
     ssize_t nw;
-    ssize_t tdiff;
+    unsigned long int tdiff;
 
     transop_null_init( &transop_null );
     memset(c,0,sizeof(N2N_COMMUNITY_SIZE));
