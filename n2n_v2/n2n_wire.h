@@ -64,6 +64,8 @@ typedef enum n2n_pc n2n_pc_t;
 #define IPV4_SIZE                       4
 #define IPV6_SIZE                       16
 
+#define ETH_FRAMEHDRSIZE                   14
+#define IP4_SRCOFFSET                   12
 
 #define N2N_AUTH_TOKEN_SIZE             32      /* bytes */
 
@@ -318,6 +320,9 @@ int decode_PACKET( n2n_PACKET_t * pkt,
                    const uint8_t * base,
                    size_t * rem,
                    size_t * idx );
+
+int copy_ETHFRAMEHDR( uint8_t * base,
+                      uint8_t * pkt);
 
 
 #endif /* #if !defined( N2N_WIRE_H_ ) */

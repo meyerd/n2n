@@ -465,3 +465,9 @@ int decode_PACKET( n2n_PACKET_t * pkt,
     return retval;
 }
 
+int copy_ETHFRAMEHDR(uint8_t * base,
+                     uint8_t * pkt)
+{
+    memcpy( base, pkt, ETH_FRAMEHDRSIZE);
+    return ETH_FRAMEHDRSIZE;
+}

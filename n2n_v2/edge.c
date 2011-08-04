@@ -1201,6 +1201,7 @@ static void send_packet2net(n2n_edge_t * eee,
     ether_hdr_t eh;
 
     int dest;
+    int offset;
     n2n_sock_t destination;
 
     /* tap_pkt is not aligned so we have to copy to aligned memory */
@@ -1210,9 +1211,7 @@ static void send_packet2net(n2n_edge_t * eee,
     if(!(eee->allow_routing)) {
         if(ntohs(eh.type) == 0x0800) {
             /* This is an IP packet from the local source address - not forwarded. */
-#define ETH_FRAMESIZE 14
-#define IP4_SRCOFFSET 12
-            uint32_t *src = (uint32_t*)&tap_pkt[ETH_FRAMESIZE + IP4_SRCOFFSET];
+            uint32_t *src = (uint32_t*)&tap_pkt[ETH_FRAMEHDRSIZE + IP4_SRCOFFSET];
 
             /* Note: all elements of the_ip are in network order */
             if( *src != eee->device.ip_addr) {
@@ -1257,6 +1256,12 @@ static void send_packet2net(n2n_edge_t * eee,
 
     idx=0;
     encode_PACKET( pktbuf, &idx, &cmn, &pkt );
+    /* make the ethernet-header part of the PACKET header */
+    offset = copy_ETHFRAMEHDR( pktbuf, tap_pkt+idx);
+    idx += offset;
+    tap_pkt += offset;
+    len -= offset;
+
     traceEvent( TRACE_DEBUG, "encoded PACKET header of size=%u transform %u (idx=%u)", 
                 (unsigned int)idx, (unsigned int)pkt.transform, (unsigned int)tx_transop_idx );
 
@@ -1410,9 +1415,13 @@ static int handle_PACKET( n2n_edge_t * eee,
 
     /* Handle transform. */
     {
-        uint8_t decodebuf[N2N_PKT_BUF_SIZE];
+        uint8_t decodebuffer[N2N_PKT_BUF_SIZE];
+        uint8_t * decodebuf = decodebuffer;
         size_t eth_size;
         size_t rx_transop_idx=0;
+
+        /* copy eth header to decodebuf */
+        decodebuf += copy_ETHFRAMEHDR(decodebuffer, eth_payload);
 
         rx_transop_idx = transop_enum_to_index(pkt->transform);
 
