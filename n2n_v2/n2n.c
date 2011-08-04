@@ -27,14 +27,6 @@
 
 #include <assert.h>
 
-#if defined(DEBUG)
-#   define PURGE_REGISTRATION_FREQUENCY   60
-#   define REGISTRATION_TIMEOUT          120
-#else /* #if defined(DEBUG) */
-#   define PURGE_REGISTRATION_FREQUENCY   60
-#   define REGISTRATION_TIMEOUT           (60*20)
-#endif /* #if defined(DEBUG) */
-
 /* sglib hash table implementation */
 
 SGLIB_DEFINE_LIST_FUNCTIONS(peer_info_t, PEER_INFO_COMPARATOR, next)
@@ -320,17 +312,13 @@ void peer_list_add( struct peer_info * * list,
 }
 
 size_t purge_with_function(struct peer_info ** peer_list, size_t(*purger)(struct peer_info ** peer_list, time_t purge_before)) {
-  static time_t last_purge = 0;
   time_t now = time(NULL);
   size_t num_reg = 0;
 
-  if((now - last_purge) < PURGE_REGISTRATION_FREQUENCY) return 0;
-
   traceEvent(TRACE_INFO, "Purging old registrations");
 
-  num_reg = purge_peer_list( peer_list, now-REGISTRATION_TIMEOUT );
+  num_reg = purger( peer_list, now-REGISTRATION_TIMEOUT );
 
-  last_purge = now;
   traceEvent(TRACE_INFO, "Remove %ld registrations", num_reg);
 
   return num_reg;
@@ -340,55 +328,47 @@ size_t purge_with_function(struct peer_info ** peer_list, size_t(*purger)(struct
 size_t purge_peer_list( struct peer_info ** peer_list,
                         time_t purge_before )
 {
-  struct peer_info *scan;
-  struct peer_info *prev;
-  size_t retval=0;
+    struct peer_info *scan;
+    struct peer_info *prev;
+    size_t retval=0;
 
-  scan = *peer_list;
-  prev = NULL;
-  while(scan != NULL)
-    {
-      if(scan->last_seen < purge_before)
-        {
-	  struct peer_info *next = scan->next;
+    scan = *peer_list;
+    prev = NULL;
+    while(scan != NULL) {
+        if(scan->last_seen < purge_before) {
+            struct peer_info *next = scan->next;
 
-	  if(prev == NULL)
-            {
-	      *peer_list = next;
+            if(prev == NULL) {
+                *peer_list = next;
+            } else {
+                prev->next = next;
             }
-	  else
-            {
-	      prev->next = next;
-            }
-
-	  ++retval;
-	  free(scan);
-	  scan = next;
-        }
-      else
-        {
-	  prev = scan;
-	  scan = scan->next;
+            ++retval;
+            free(scan);
+            scan = next;
+        } else {
+            prev = scan;
+            scan = scan->next;
         }
     }
-
-  return retval;
+    return retval;
 }
 
 size_t purge_hashed_peer_list_t(peer_info_t ** peer_list, time_t purge_before) {
-	peer_info_t *ll;
-	struct sglib_hashed_peer_info_t_iterator    it;
-	size_t retval = 0;
+    peer_info_t *ll;
+    struct sglib_hashed_peer_info_t_iterator    it;
+    size_t retval = 0;
 
-	for(ll=sglib_hashed_peer_info_t_it_init(&it,peer_list); ll!=NULL; ll=sglib_hashed_peer_info_t_it_next(&it)) {
-		if(ll->last_seen < purge_before) {
-			++retval;
-			sglib_hashed_peer_info_t_delete(peer_list, ll);
-			free(ll);
-		}
-	}
+    for(ll=sglib_hashed_peer_info_t_it_init(&it,peer_list); ll!=NULL;
+            ll=sglib_hashed_peer_info_t_it_next(&it)) {
+        if(ll->last_seen < purge_before) {
+            ++retval;
+            sglib_hashed_peer_info_t_delete(peer_list, ll);
+            free(ll);
+        }
+    }
 
-	return retval;
+    return retval;
 }
 
 size_t purge_expired_registrations( struct peer_info ** peer_list ) {
