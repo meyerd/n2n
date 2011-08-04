@@ -184,7 +184,8 @@ struct peer_info {
     n2n_community_t     community_name;
     n2n_mac_t           mac_addr;
     n2n_sock_t          sock;
-    n2n_sock_t *        local_sock;
+    int                 num_sockets;
+    n2n_sock_t *        sockets;
     time_t              last_seen;
 };
 typedef struct peer_info peer_info_t;

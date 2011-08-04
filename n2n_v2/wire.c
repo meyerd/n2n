@@ -271,10 +271,13 @@ int encode_REGISTER_SUPER( uint8_t * base,
 {
     int retval=0;
     retval += encode_common( base, idx, common );
+    retval += encode_uint16( base, idx, reg->aflags );
     retval += encode_buf( base, idx, reg->cookie, N2N_COOKIE_SIZE );
     retval += encode_mac( base, idx, reg->edgeMac );
     retval += encode_uint16( base, idx, 0 ); /* NULL auth scheme */
     retval += encode_uint16( base, idx, 0 ); /* No auth data */
+    if(reg->aflags & N2N_AFLAGS_LOCAL_SOCKET)
+        retval += encode_sock( base, idx, &(reg->local_sock) );
 
     return retval;
 }
@@ -287,11 +290,15 @@ int decode_REGISTER_SUPER( n2n_REGISTER_SUPER_t * reg,
 {
     size_t retval=0;
     memset( reg, 0, sizeof(n2n_REGISTER_SUPER_t) );
+    retval += decode_uint16( &(reg->aflags), base, rem, idx );
     retval += decode_buf( reg->cookie, N2N_COOKIE_SIZE, base, rem, idx );
     retval += decode_mac( reg->edgeMac, base, rem, idx );
     retval += decode_uint16( &(reg->auth.scheme), base, rem, idx );
     retval += decode_uint16( &(reg->auth.toksize), base, rem, idx );
     retval += decode_buf( reg->auth.token, reg->auth.toksize, base, rem, idx );
+    if(reg->aflags & N2N_AFLAGS_LOCAL_SOCKET)
+        retval += decode_sock( &(reg->local_sock), base, rem, idx );
+
     return retval;
 }
 

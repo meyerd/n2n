@@ -52,6 +52,10 @@ enum n2n_pc
 
 typedef enum n2n_pc n2n_pc_t;
 
+/* for the additional_flags present in some non-PACKET types */
+#define N2N_AFLAGS_LOCAL_SOCKET         0x0001
+
+/* for the common header section */
 #define N2N_FLAGS_FROM_SUPERNODE        0x0020
 
 /* The bits in flag that are the packet type */
@@ -151,9 +155,11 @@ typedef struct n2n_ETHFRAMEHDR n2n_ETHFRAMEHDR_t;
 /* Linked with n2n_register_super in n2n_pc_t. Only from edge to supernode. */
 struct n2n_REGISTER_SUPER
 {
+    uint16_t             aflags;         /* additional flags */
     n2n_cookie_t        cookie;         /* Link REGISTER_SUPER and REGISTER_SUPER_ACK */
     n2n_mac_t           edgeMac;        /* MAC to register with edge sending socket */
     n2n_auth_t          auth;           /* Authentication scheme and tokens */
+    n2n_sock_t          local_sock;
 };
 
 typedef struct n2n_REGISTER_SUPER n2n_REGISTER_SUPER_t;

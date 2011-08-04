@@ -709,13 +709,11 @@ static void update_peer_address(n2n_edge_t * eee,
 void check_peer( n2n_edge_t * eee,
                  uint8_t from_supernode,
                  const n2n_mac_t mac,
-                 const n2n_sock_t * peer,
-                 const n2n_sock_t * remote_local_sock );
+                 const n2n_sock_t * peer );
 void try_send_register( n2n_edge_t * eee,
                         uint8_t from_supernode,
                         const n2n_mac_t mac,
-                        const n2n_sock_t * peer,
-                        const n2n_sock_t * remote_local_sock );
+                        const n2n_sock_t * peer );
 void set_peer_operational( n2n_edge_t * eee,
                            const n2n_mac_t mac,
                            const n2n_sock_t * peer );
@@ -738,8 +736,7 @@ void set_peer_operational( n2n_edge_t * eee,
 void try_send_register( n2n_edge_t * eee,
                         uint8_t from_supernode,
                         const n2n_mac_t mac,
-                        const n2n_sock_t * peer,
-                        const n2n_sock_t * remote_local_sock )
+                        const n2n_sock_t * peer )
 {
     /* REVISIT: purge of pending_peers not yet done. */
     struct peer_info * scan = find_peer_by_mac( eee->pending_peers, mac );
@@ -753,26 +750,19 @@ void try_send_register( n2n_edge_t * eee,
         memcpy(scan->mac_addr, mac, N2N_MAC_SIZE);
         scan->sock = *peer;
         scan->last_seen = time(NULL); /* Don't change this it marks the pending peer for removal. */
-        if( remote_local_sock ) {
-            scan->local_sock = (n2n_sock_t *) malloc(sizeof(n2n_sock_t));
-            (*scan->local_sock) = *remote_local_sock;
-        }
 
 		sglib_hashed_peer_info_t_add(eee->pending_peers, scan);
 
         traceEvent( TRACE_DEBUG, "=== new pending %s -> %s",
                     macaddr_str( mac_buf, scan->mac_addr ),
-                    sock_to_cstr( sockbuf, &(scan->sock) ) );
+                    sock_to_cstr( sockbuf, &scan->sock ) );
 
         traceEvent( TRACE_INFO, "Pending peers list size=%u",
 			(unsigned int)hashed_peer_list_t_size( eee->pending_peers ) );
 
         /* trace Sending REGISTER */
 
-        send_register(eee, &(scan->sock), scan->mac_addr );
-        if( scan->local_sock ) {
-            send_register(eee, scan->local_sock, scan->mac_addr );
-        }
+        send_register(eee, &scan->sock, scan->mac_addr );
 
         /* pending_peers now owns scan. */
     }
@@ -786,8 +776,7 @@ void try_send_register( n2n_edge_t * eee,
 void check_peer( n2n_edge_t * eee,
                  uint8_t from_supernode,
                  const n2n_mac_t mac,
-                 const n2n_sock_t * peer,
-                 const n2n_sock_t * remote_local_sock )
+                 const n2n_sock_t * peer)
 {
 	peer_info_t scan;
 	memcpy(scan.mac_addr, mac, sizeof(n2n_mac_t));
@@ -795,7 +784,7 @@ void check_peer( n2n_edge_t * eee,
 	if (sglib_hashed_peer_info_t_find_member(eee->known_peers, &scan) == NULL)
     {
         /* Not in known_peers - start the REGISTER process. */
-        try_send_register( eee, from_supernode, mac, peer, remote_local_sock );
+        try_send_register( eee, from_supernode, mac, peer );
     }
     else
     {
@@ -831,9 +820,6 @@ void set_peer_operational( n2n_edge_t * eee,
     if(scan) {
         /* Remove scan from pending_peers. */
 		sglib_hashed_peer_info_t_delete(eee->pending_peers, scan);
-        /* remove local address, not needed for an operational peer */
-        free(scan->local_sock);
-        scan->local_sock = NULL;
         
         /* Add scan to known_peers. */
 		sglib_hashed_peer_info_t_add(eee->known_peers, scan);
@@ -843,7 +829,7 @@ void set_peer_operational( n2n_edge_t * eee,
 
         traceEvent( TRACE_DEBUG, "=== new peer %s -> %s",
                     macaddr_str( mac_buf, scan->mac_addr),
-                    sock_to_cstr( sockbuf, &(scan->sock) ) );
+                    sock_to_cstr( sockbuf, &scan->sock ) );
 
         traceEvent( TRACE_INFO, "Pending peers list size=%u",
                     (unsigned int)hashed_peer_list_t_size( eee->pending_peers ) );
@@ -947,7 +933,7 @@ static void update_peer_address(n2n_edge_t * eee,
 			sglib_hashed_peer_info_t_delete(eee->known_peers, scan);
             free(scan);
 
-            try_send_register( eee, from_supernode, mac, peer, NULL );
+            try_send_register( eee, from_supernode, mac, peer );
         }
         else
         {
@@ -1109,8 +1095,6 @@ static int find_peer_destination(n2n_edge_t * eee,
 					macaddr_str( mac_buf, mac_address),
 					sock_to_cstr( sockbuf, &tryscan->sock));
 				send_register(eee, &tryscan->sock, tryscan->mac_addr);
-                if ( tryscan->local_sock )
-                    send_register(eee, tryscan->local_sock, tryscan->mac_addr);
 				tryscan->last_seen = now;
 			}
 		}
@@ -1370,7 +1354,6 @@ static int handle_PACKET( n2n_edge_t * eee,
                           const n2n_common_t * cmn,
                           const n2n_PACKET_t * pkt,
                           const n2n_sock_t * orig_sender,
-                          const n2n_sock_t * remote_local_sock,
                           uint8_t * payload,
                           size_t psize )
 {
@@ -1404,8 +1387,7 @@ static int handle_PACKET( n2n_edge_t * eee,
 
     decode_ETHFRAMEHDR(&eth, payload);
     /* Update the sender in peer table entry */
-    check_peer( eee, from_supernode, eth.srcMac, orig_sender,
-            remote_local_sock );
+    check_peer( eee, from_supernode, eth.srcMac, orig_sender);
 
     /* Handle transform. */
     {
@@ -1788,8 +1770,8 @@ static void readFromIPSocket( n2n_edge_t * eee )
                        sock_to_cstr(sockbuf1, &sender),
                        sock_to_cstr(sockbuf2, orig_sender) );
 
-            handle_PACKET( eee, &cmn, &pkt, orig_sender, NULL,
-                    udp_buf+idx, recvlen-idx );
+            handle_PACKET( eee, &cmn, &pkt, orig_sender, udp_buf+idx,
+                    recvlen-idx );
             break;
         case MSG_TYPE_REGISTER:
             /* Another edge is registering with us */
@@ -1808,9 +1790,6 @@ static void readFromIPSocket( n2n_edge_t * eee )
                 if (sglib_hashed_peer_info_t_find_member( 
                             eee->pending_peers, &tmp) != NULL)
                     send_register(eee, orig_sender, NULL);
-                else
-                    check_peer( eee, from_supernode, reg.srcMac,
-                            orig_sender, NULL );
             }
 
             send_register_ack(eee, orig_sender, &reg);
