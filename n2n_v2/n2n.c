@@ -36,7 +36,7 @@ unsigned int peer_info_t_hash_function(peer_info_t *e) {
 #if N2N_MAC_SIZE != 6
 	#error not implemented yet!
 #else 
-    int i;
+    short i = 0;
 	uint32_t tmp = 0;
 	for(; i < N2N_MAC_SIZE / 2; i++) {
 		tmp |= (e->mac_addr[i<<1] ^ e->mac_addr[(i<<1)+1])
