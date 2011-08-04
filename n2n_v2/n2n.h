@@ -162,6 +162,16 @@ typedef struct tuntap_dev {
 
 #define DEFAULT_MTU   1400
 
+/* Frequency registration should be attempted to purge and timeout value after
+ * which to purge*/
+#if defined(DEBUG)
+#   define PURGE_REGISTRATION_FREQUENCY   60
+#   define REGISTRATION_TIMEOUT          120
+#else /* #if defined(DEBUG) */
+#   define PURGE_REGISTRATION_FREQUENCY   60
+#   define REGISTRATION_TIMEOUT           120
+#endif /* #if defined(DEBUG) */
+
 /** Common type used to hold stringified IP addresses. */
 typedef char ipstr_t[32];
 
@@ -269,6 +279,7 @@ void   peer_list_add( struct peer_info * * list,
                       struct peer_info * new );
 size_t peer_list_size( const struct peer_info * list );
 size_t hashed_peer_list_t_size(peer_info_t** htab);
+size_t purge_with_function(struct peer_info ** peer_list, size_t(*purger)(struct peer_info ** peer_list, time_t purge_before));
 size_t purge_peer_list( struct peer_info ** peer_list, 
                         time_t purge_before );
 size_t purge_hashed_peer_list_t(peer_info_t ** peer_list, time_t purge_before);
