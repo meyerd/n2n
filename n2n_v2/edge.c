@@ -1832,7 +1832,6 @@ static void readFromIPSocket( n2n_edge_t * eee )
                     recvlen-idx );
             break;
         case MSG_TYPE_PEER_INFO:
-            printf("PEER INFO RECEIVED\n");
             decode_PEER_INFO( &pi, &cmn, udp_buf, &rem, &idx );
 
             scan = find_peer_by_mac( eee->pending_peers, pi.mac );
@@ -1849,7 +1848,7 @@ static void readFromIPSocket( n2n_edge_t * eee )
                 traceEvent(TRACE_INFO, "Rx PEER_INFO on %s",
                            macaddr_str(mac_buf1, pi.mac) );
                 for(j=0; j<scan->num_sockets; j++)
-                    send_register(eee, &scan->sockets[i], scan->mac_addr);
+                    send_register(eee, scan->sockets+j, scan->mac_addr);
             } else {
                 traceEvent(TRACE_INFO, "Rx PEER_INFO unknown peer %s",
                            macaddr_str(mac_buf1, pi.mac) );
