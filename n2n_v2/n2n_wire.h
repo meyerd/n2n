@@ -195,7 +195,22 @@ struct n2n_REGISTER_SUPER_NAK
 
 typedef struct n2n_REGISTER_SUPER_NAK n2n_REGISTER_SUPER_NAK_t;
 
+struct n2n_PEER_INFO
+{
+    uint16_t    aflags;
+    n2n_mac_t   mac;
+    n2n_sock_t  sock1;
+    n2n_sock_t  sock2;
+};
 
+typedef struct n2n_PEER_INFO n2n_PEER_INFO_t;
+
+struct n2n_QUERY_PEER
+{
+    n2n_mac_t   mac;
+};
+
+typedef struct n2n_QUERY_PEER n2n_QUERY_PEER_t;
 
 struct n2n_buf
 {
@@ -324,6 +339,28 @@ int encode_PACKET( uint8_t * base,
                    const n2n_PACKET_t * pkt );
 
 int decode_PACKET( n2n_PACKET_t * pkt,
+                   const n2n_common_t * cmn, /* info on how to interpret it */
+                   const uint8_t * base,
+                   size_t * rem,
+                   size_t * idx );
+
+int encode_PEER_INFO( uint8_t * base, 
+                   size_t * idx,
+                   const n2n_common_t * common, 
+                   const n2n_PEER_INFO_t * pkt );
+
+int decode_PEER_INFO( n2n_PEER_INFO_t * pkt,
+                   const n2n_common_t * cmn, /* info on how to interpret it */
+                   const uint8_t * base,
+                   size_t * rem,
+                   size_t * idx );
+
+int encode_QUERY_PEER( uint8_t * base, 
+                   size_t * idx,
+                   const n2n_common_t * common, 
+                   const n2n_QUERY_PEER_t * pkt );
+
+int decode_QUERY_PEER( n2n_QUERY_PEER_t * pkt,
                    const n2n_common_t * cmn, /* info on how to interpret it */
                    const uint8_t * base,
                    size_t * rem,

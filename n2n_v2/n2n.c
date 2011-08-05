@@ -351,6 +351,7 @@ size_t purge_peer_list( struct peer_info ** peer_list,
                 prev->next = next;
             }
             ++retval;
+            free(scan->sockets);
             free(scan);
             scan = next;
         } else {
@@ -371,6 +372,7 @@ size_t purge_hashed_peer_list_t(peer_info_t ** peer_list, time_t purge_before) {
         if(ll->last_seen < purge_before) {
             ++retval;
             sglib_hashed_peer_info_t_delete(peer_list, ll);
+            free(ll->sockets);
             free(ll);
         }
     }

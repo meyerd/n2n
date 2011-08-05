@@ -524,6 +524,8 @@ static int process_udp( n2n_sn_t * sss,
             try_broadcast( sss, &cmn, eth.srcMac, rec_buf, encx );
         }
         break;
+    case MSG_TYPE_QUERY_PEER:
+        break;
     case MSG_TYPE_REGISTER:
         /* Forwarding a REGISTER from one edge to the next */
 

@@ -1777,6 +1777,8 @@ static void readFromIPSocket( n2n_edge_t * eee )
             handle_PACKET( eee, &cmn, &pkt, orig_sender, udp_buf+idx,
                     recvlen-idx );
             break;
+        case MSG_TYPE_PEER_INFO:
+            break;
         case MSG_TYPE_REGISTER:
             /* Another edge is registering with us */
             decode_REGISTER( &reg, &cmn, udp_buf, &rem, &idx );

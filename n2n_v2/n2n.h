@@ -153,6 +153,8 @@ typedef struct tuntap_dev {
 #define MSG_TYPE_REGISTER_SUPER_ACK     6
 #define MSG_TYPE_REGISTER_SUPER_NAK     7
 #define MSG_TYPE_FEDERATION             8
+#define MSG_TYPE_PEER_INFO              9
+#define MSG_TYPE_QUERY_PEER            10
 
 /* Set N2N_COMPRESSION_ENABLED to 0 to disable lzo1x compression of ethernet
  * frames. Doing this will break compatibility with the standard n2n packet

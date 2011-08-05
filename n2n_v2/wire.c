@@ -302,6 +302,64 @@ int decode_REGISTER_SUPER( n2n_REGISTER_SUPER_t * reg,
     return retval;
 }
 
+int encode_PEER_INFO( uint8_t * base, 
+                      size_t * idx,
+                      const n2n_common_t * common, 
+                      const n2n_PEER_INFO_t * reg )
+{
+    int retval=0;
+    retval += encode_common( base, idx, common );
+    retval += encode_uint16( base, idx, reg->aflags );
+    retval += encode_mac( base, idx, reg->mac );
+    retval += encode_sock( base, idx, &reg->sock1 );
+    if(reg->aflags & N2N_AFLAGS_LOCAL_SOCKET)
+        retval += encode_sock( base, idx, &reg->sock2 );
+
+    return retval;
+}
+
+int decode_PEER_INFO( n2n_PEER_INFO_t * reg,
+                           const n2n_common_t * cmn, /* info on how to interpret it */
+                           const uint8_t * base,
+                           size_t * rem,
+                           size_t * idx )
+{
+    size_t retval=0;
+    memset( reg, 0, sizeof(n2n_PEER_INFO_t) );
+    retval += decode_uint16( &(reg->aflags), base, rem, idx );
+    retval += decode_mac( reg->mac, base, rem, idx );
+    retval += decode_sock( &reg->sock1, base, rem, idx );
+    if(reg->aflags & N2N_AFLAGS_LOCAL_SOCKET)
+        retval += decode_sock( &reg->sock2, base, rem, idx );
+
+    return retval;
+}
+
+int encode_QUERY_PEER( uint8_t * base, 
+                      size_t * idx,
+                      const n2n_common_t * common, 
+                      const n2n_QUERY_PEER_t * reg )
+{
+    int retval=0;
+    retval += encode_common( base, idx, common );
+    retval += encode_mac( base, idx, reg->mac );
+
+    return retval;
+}
+
+int decode_QUERY_PEER( n2n_QUERY_PEER_t * reg,
+                           const n2n_common_t * cmn, /* info on how to interpret it */
+                           const uint8_t * base,
+                           size_t * rem,
+                           size_t * idx )
+{
+    size_t retval=0;
+    memset( reg, 0, sizeof(n2n_QUERY_PEER_t) );
+    retval += decode_mac( reg->mac, base, rem, idx );
+
+    return retval;
+}
+
 int encode_REGISTER_ACK( uint8_t * base, 
                          size_t * idx,
                          const n2n_common_t * common, 
