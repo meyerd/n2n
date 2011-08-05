@@ -1274,7 +1274,7 @@ static void send_packet2net(n2n_edge_t * eee,
     idx=0;
     encode_PACKET( pktbuf, &idx, &cmn, &pkt );
     /* make the ethernet-header part of the PACKET header */
-    offset = copy_ETHFRAMEHDR( pktbuf, tap_pkt+idx);
+    offset = copy_ETHFRAMEHDR( pktbuf+idx , tap_pkt);
     idx += offset;
     tap_pkt += offset;
     len -= offset;
