@@ -1844,10 +1844,12 @@ static void readFromIPSocket( n2n_edge_t * eee )
                 else
                     scan->num_sockets = 1;
                 scan->sockets = malloc(scan->num_sockets*sizeof(n2n_sock_t));
-                for(j = 0; i < scan->num_sockets; j++)
+                for(j=0; j<scan->num_sockets; j++)
                     scan->sockets[j] = pi.sockets[j];
                 traceEvent(TRACE_INFO, "Rx PEER_INFO on %s",
                            macaddr_str(mac_buf1, pi.mac) );
+                for(j=0; j<scan->num_sockets; j++)
+                    send_register(eee, &scan->sockets[i], scan->mac_addr);
             } else {
                 traceEvent(TRACE_INFO, "Rx PEER_INFO unknown peer %s",
                            macaddr_str(mac_buf1, pi.mac) );

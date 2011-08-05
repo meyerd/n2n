@@ -349,9 +349,9 @@ int decode_PACKET( n2n_PACKET_t * pkt,
 int encode_PEER_INFO( uint8_t * base, 
                    size_t * idx,
                    const n2n_common_t * common, 
-                   const n2n_PEER_INFO_t * pkt );
+                   const n2n_PEER_INFO_t * pi );
 
-int decode_PEER_INFO( n2n_PEER_INFO_t * pkt,
+int decode_PEER_INFO( n2n_PEER_INFO_t * pi,
                    const n2n_common_t * cmn, /* info on how to interpret it */
                    const uint8_t * base,
                    size_t * rem,
@@ -360,9 +360,9 @@ int decode_PEER_INFO( n2n_PEER_INFO_t * pkt,
 int encode_QUERY_PEER( uint8_t * base, 
                    size_t * idx,
                    const n2n_common_t * common, 
-                   const n2n_QUERY_PEER_t * pkt );
+                   const n2n_QUERY_PEER_t * qp );
 
-int decode_QUERY_PEER( n2n_QUERY_PEER_t * pkt,
+int decode_QUERY_PEER( n2n_QUERY_PEER_t * qp,
                    const n2n_common_t * cmn, /* info on how to interpret it */
                    const uint8_t * base,
                    size_t * rem,

@@ -547,7 +547,7 @@ static int process_udp( n2n_sn_t * sss,
             pi.aflags = 0;
             memcpy( pi.mac, query.targetMac, sizeof(n2n_mac_t) );
             for(i=0; i<scan->num_sockets; i++)
-                pi.sockets[i] = scan->sockets[0];
+                pi.sockets[i] = scan->sockets[i];
             if(scan->num_sockets > 1)
                 pi.aflags |= N2N_AFLAGS_LOCAL_SOCKET;
 
