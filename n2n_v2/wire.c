@@ -311,9 +311,9 @@ int encode_PEER_INFO( uint8_t * base,
     retval += encode_common( base, idx, common );
     retval += encode_uint16( base, idx, reg->aflags );
     retval += encode_mac( base, idx, reg->mac );
-    retval += encode_sock( base, idx, &reg->sock1 );
+    retval += encode_sock( base, idx, reg->sockets );
     if(reg->aflags & N2N_AFLAGS_LOCAL_SOCKET)
-        retval += encode_sock( base, idx, &reg->sock2 );
+        retval += encode_sock( base, idx, reg->sockets+1 );
 
     return retval;
 }
@@ -328,9 +328,9 @@ int decode_PEER_INFO( n2n_PEER_INFO_t * reg,
     memset( reg, 0, sizeof(n2n_PEER_INFO_t) );
     retval += decode_uint16( &(reg->aflags), base, rem, idx );
     retval += decode_mac( reg->mac, base, rem, idx );
-    retval += decode_sock( &reg->sock1, base, rem, idx );
+    retval += decode_sock( reg->sockets, base, rem, idx );
     if(reg->aflags & N2N_AFLAGS_LOCAL_SOCKET)
-        retval += decode_sock( &reg->sock2, base, rem, idx );
+        retval += decode_sock( reg->sockets+1, base, rem, idx );
 
     return retval;
 }

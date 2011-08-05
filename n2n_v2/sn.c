@@ -426,7 +426,8 @@ static int process_udp( n2n_sn_t * sss,
     int                 unicast; /* non-zero if unicast */
     size_t              encx=0;
     uint8_t             encbuf[N2N_SN_PKTBUF_SIZE];
-    n2n_ETHFRAMEHDR_t               eth;
+    n2n_ETHFRAMEHDR_t   eth;
+    int                 i;
 
     /* for PACKET packages */
     n2n_PACKET_t                    pkt; 
@@ -545,11 +546,11 @@ static int process_udp( n2n_sn_t * sss,
 
             pi.aflags = 0;
             memcpy( pi.mac, query.targetMac, sizeof(n2n_mac_t) );
-            pi.sock1 = scan->sockets[0];
-            if(scan->num_sockets > 1) {
+            for(i=0; i<scan->num_sockets; i++)
+                pi.sockets[i] = scan->sockets[0];
+            if(scan->num_sockets > 1)
                 pi.aflags |= N2N_AFLAGS_LOCAL_SOCKET;
-                pi.sock2 = scan->sockets[1];
-            }
+
             encode_PEER_INFO( encbuf, &encx, &cmn2, &pi );
 
             sendto( sss->sock, encbuf, encx, 0, 

@@ -1739,16 +1739,19 @@ static void readFromIPSocket( n2n_edge_t * eee )
     size_t              rem;
     size_t              idx;
     size_t              msg_type;
-    uint8_t             from_supernode;
     struct sockaddr_in  sender_sock;
     n2n_sock_t          sender;
     n2n_sock_t *        orig_sender=NULL;
     time_t              now=0;
-
     size_t              i;
+    int                 j;
 
     /* for PACKET packages */
     n2n_PACKET_t pkt;
+
+    /* for PEER_INFO packages */
+    n2n_PEER_INFO_t pi;
+    struct peer_info *  scan;
 
     /* for REGISTER packages */
     n2n_REGISTER_t reg;
@@ -1798,7 +1801,6 @@ static void readFromIPSocket( n2n_edge_t * eee )
     now = time(NULL);
 
     msg_type = cmn.pc; /* packet code */
-    from_supernode= cmn.flags & N2N_FLAGS_FROM_SUPERNODE;
 
     if( 0 == memcmp(cmn.community, eee->community_name, N2N_COMMUNITY_SIZE) )
     {
@@ -1815,6 +1817,26 @@ static void readFromIPSocket( n2n_edge_t * eee )
                     recvlen-idx );
             break;
         case MSG_TYPE_PEER_INFO:
+            decode_PEER_INFO( &pi, &cmn, udp_buf, &rem, &idx );
+
+            scan = find_peer_by_mac( eee->pending_peers, pi.mac );
+            if (scan) {
+                if (scan->num_sockets > 0)
+                    free(scan->sockets);
+                if (pi.aflags & N2N_AFLAGS_LOCAL_SOCKET)
+                    scan->num_sockets = 2;
+                else
+                    scan->num_sockets = 1;
+                scan->sockets = malloc(scan->num_sockets*sizeof(n2n_sock_t));
+                for(j = 0; i < scan->num_sockets; j++)
+                    scan->sockets[j] = pi.sockets[j];
+                traceEvent(TRACE_INFO, "Rx PEER_INFO on %s",
+                           macaddr_str(mac_buf1, pi.mac) );
+            } else {
+                traceEvent(TRACE_INFO, "Rx PEER_INFO unknown peer %s",
+                           macaddr_str(mac_buf1, pi.mac) );
+            }
+
             break;
         case MSG_TYPE_REGISTER:
             /* Another edge is registering with us */
