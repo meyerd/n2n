@@ -540,7 +540,7 @@ static int process_udp( n2n_sn_t * sss,
         scan = find_peer_by_mac( sss->edges, query.targetMac );
         if (scan) {
             cmn2.ttl = N2N_DEFAULT_TTL;
-            cmn2.pc = n2n_register_super_ack;
+            cmn2.pc = n2n_peer_info;
             cmn2.flags = N2N_FLAGS_FROM_SUPERNODE;
             memcpy( cmn2.community, cmn.community, sizeof(n2n_community_t) );
 
