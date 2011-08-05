@@ -614,6 +614,32 @@ static void send_register( n2n_edge_t * eee,
     sendto_sock( eee->udp_sock, pktbuf, idx, remote_peer );
 }
 
+/** Send a QUERY_PEER packet to the current supernode. */
+static void send_query_peer( n2n_edge_t * eee,
+                             const n2n_mac_t dstMac)
+{
+    uint8_t pktbuf[N2N_PKT_BUF_SIZE];
+    size_t idx;
+    n2n_common_t cmn = {0};
+    n2n_QUERY_PEER_t query = {{0}};
+
+    cmn.ttl=N2N_DEFAULT_TTL;
+    cmn.pc = n2n_query_peer;
+    cmn.flags = 0;
+    memcpy( cmn.community, eee->community_name, N2N_COMMUNITY_SIZE );
+
+    idx=0;
+    encode_mac( query.srcMac, &idx, eee->device.mac_addr );
+    idx=0;
+    encode_mac( query.targetMac, &idx, dstMac );
+
+    idx=0;
+    encode_QUERY_PEER( pktbuf, &idx, &cmn, &query );
+
+    traceEvent( TRACE_INFO, "send QUERY_PEER to supernode" );
+
+    sendto_sock( eee->udp_sock, pktbuf, idx, &(eee->supernode) );
+}
 
 /** Send a REGISTER_SUPER packet to the current supernode. */
 static void send_register_super( n2n_edge_t * eee,
@@ -742,18 +768,19 @@ void try_send_register( n2n_edge_t * eee,
                         const n2n_mac_t mac,
                         const n2n_sock_t * peer )
 {
-    /* REVISIT: purge of pending_peers not yet done. */
     struct peer_info * scan = find_peer_by_mac( eee->pending_peers, mac );
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
 
     if ( NULL == scan )
     {
+        time_t now = time(NULL);
         scan = calloc( 1, sizeof( struct peer_info ) );
 
         memcpy(scan->mac_addr, mac, N2N_MAC_SIZE);
+        scan->num_sockets = 0;
         scan->sock = *peer;
-        scan->last_seen = time(NULL); /* Don't change this it marks the pending peer for removal. */
+        scan->last_seen = now; /* Don't change this it marks the pending peer for removal. */
 
 		sglib_hashed_peer_info_t_add(eee->pending_peers, scan);
 
@@ -766,7 +793,8 @@ void try_send_register( n2n_edge_t * eee,
 
         /* trace Sending REGISTER */
 
-        send_register(eee, &scan->sock, scan->mac_addr );
+        send_query_peer(eee, scan->mac_addr);
+        scan->last_sent_query = now;
 
         /* pending_peers now owns scan. */
     }
@@ -935,6 +963,7 @@ static void update_peer_address(n2n_edge_t * eee,
             /* The peer has changed public socket. It can no longer be assumed to be reachable. */
             /* Remove the peer. */
 			sglib_hashed_peer_info_t_delete(eee->known_peers, scan);
+            free(scan->sockets);
             free(scan);
 
             try_send_register( eee, from_supernode, mac, peer );
@@ -1075,6 +1104,7 @@ static int find_peer_destination(n2n_edge_t * eee,
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
     int retval=0;
+    int i;
 	time_t now = time(NULL);
 
     traceEvent(TRACE_DEBUG, "Searching destination peer for MAC %02X:%02X:%02X:%02X:%02X:%02X",
@@ -1094,11 +1124,18 @@ static int find_peer_destination(n2n_edge_t * eee,
     {
 		tryscan = sglib_hashed_peer_info_t_find_member(eee->pending_peers, &tmp);
 		if(tryscan) {
-			if(now - tryscan->last_seen > RETRY_INTERVAL) {
+            if(tryscan->num_sockets == 0) {
+                /* not yet received peer_info from supernode */
+                if(now - tryscan->last_sent_query > RETRY_INTERVAL) {
+                    send_query_peer(eee, tryscan->mac_addr);
+                    scan->last_sent_query = now;
+                }
+            } else if(now - tryscan->last_seen > RETRY_INTERVAL) {
 				traceEvent(TRACE_INFO, "retrying to register peer (%s) -> [%s]",
 					macaddr_str( mac_buf, mac_address),
 					sock_to_cstr( sockbuf, &tryscan->sock));
-				send_register(eee, &tryscan->sock, tryscan->mac_addr);
+                for(i=0; i<tryscan->num_sockets; i++)
+                    send_register(eee, &tryscan->sockets[i], tryscan->mac_addr);
 				tryscan->last_seen = now;
 			}
 		}

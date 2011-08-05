@@ -189,6 +189,7 @@ struct peer_info {
     int                 num_sockets;
     n2n_sock_t *        sockets;
     time_t              last_seen;
+    time_t              last_sent_query;
 };
 typedef struct peer_info peer_info_t;
 

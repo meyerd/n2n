@@ -342,7 +342,8 @@ int encode_QUERY_PEER( uint8_t * base,
 {
     int retval=0;
     retval += encode_common( base, idx, common );
-    retval += encode_mac( base, idx, reg->mac );
+    retval += encode_mac( base, idx, reg->srcMac );
+    retval += encode_mac( base, idx, reg->targetMac );
 
     return retval;
 }
@@ -355,7 +356,8 @@ int decode_QUERY_PEER( n2n_QUERY_PEER_t * reg,
 {
     size_t retval=0;
     memset( reg, 0, sizeof(n2n_QUERY_PEER_t) );
-    retval += decode_mac( reg->mac, base, rem, idx );
+    retval += decode_mac( reg->srcMac, base, rem, idx );
+    retval += decode_mac( reg->targetMac, base, rem, idx );
 
     return retval;
 }

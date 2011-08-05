@@ -47,7 +47,9 @@ enum n2n_pc
     n2n_register_super=5,       /* Register edge to supernode */
     n2n_register_super_ack=6,   /* ACK from supernode to edge */
     n2n_register_super_nak=7,   /* NAK from supernode to edge - registration refused */
-    n2n_federation=8            /* Not used by edge */
+    n2n_federation=8,           /* Not used by edge */
+    n2n_peer_info=9,            /* Send info on a peer from sn to edge */
+    n2n_query_peer=10           /* ask supernode for info on a peer */
 };
 
 typedef enum n2n_pc n2n_pc_t;
@@ -207,7 +209,8 @@ typedef struct n2n_PEER_INFO n2n_PEER_INFO_t;
 
 struct n2n_QUERY_PEER
 {
-    n2n_mac_t   mac;
+    n2n_mac_t   srcMac;
+    n2n_mac_t   targetMac;
 };
 
 typedef struct n2n_QUERY_PEER n2n_QUERY_PEER_t;
