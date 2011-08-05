@@ -116,8 +116,8 @@ typedef struct ether_hdr ether_hdr_t;
 #endif /* #ifndef WIN32 */
 
 #include <string.h>
-
 #include <stdarg.h>
+#include <gnutls/gnutls.h>
 
 #ifdef WIN32
 #include "win32/wintap.h"
@@ -190,6 +190,10 @@ struct peer_info {
     n2n_sock_t *        sockets;
     time_t              last_seen;
     time_t              last_sent_query;
+    uint8_t             *aes_gcm_tx_ctx;
+    gnutls_datum_t      *aes_gcm_tx_key;
+    uint8_t             *aes_gcm_rx_ctx;
+    gnutls_datum_t      *aes_gcm_rx_key;
 };
 typedef struct peer_info peer_info_t;
 
