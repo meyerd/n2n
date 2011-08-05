@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <sys/stat.h>
 #include "minilzo.h"
+#include "crypto.h"
 
 #if defined(DEBUG)
 #define SOCKET_TIMEOUT_INTERVAL_SECS    5
@@ -481,6 +482,8 @@ static void edge_deinit(n2n_edge_t * eee)
     clear_hashed_peer_info_t_list( eee->pending_peers );
     clear_hashed_peer_info_t_list( eee->known_peers );
 
+    crypto_deinit();
+
     (eee->transop[N2N_TRANSOP_TF_IDX].deinit)(&eee->transop[N2N_TRANSOP_TF_IDX]);
     (eee->transop[N2N_TRANSOP_NULL_IDX].deinit)(&eee->transop[N2N_TRANSOP_NULL_IDX]);
 }
@@ -819,6 +822,9 @@ void set_peer_operational( n2n_edge_t * eee,
     peer_info_t *scan;
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
+    void *key;  // dummy key
+    void *ctx = NULL;
+    int err;
 
     traceEvent( TRACE_INFO, "set_peer_operational: %s -> %s",
                 macaddr_str( mac_buf, mac),
@@ -837,6 +843,27 @@ void set_peer_operational( n2n_edge_t * eee,
         
         /* Add scan to known_peers. */
 		sglib_hashed_peer_info_t_add(eee->known_peers, scan);
+
+        /* TODO: DH and key derivation, for now set dummy keys */
+        /* set tx session key */
+        key = aes_gcm_dummy_key();
+        err = aes_gcm_session_create(key, ctx);
+        if (err) {
+            traceEvent(TRACE_ERROR, "Failed to initialize AES session: %d", err);
+            scan->aes_gcm_tx_ctx = NULL;
+        } else {
+            scan->aes_gcm_tx_ctx = ctx;
+            scan->aes_gcm_tx_key = key;
+        }
+        /* set rx session key */
+        err = aes_gcm_session_create(key, ctx);
+        if (err) {
+            traceEvent(TRACE_ERROR, "Failed to initialize AES session: %d", err);
+            scan->aes_gcm_rx_ctx = NULL;
+        } else {
+            scan->aes_gcm_rx_ctx = ctx;
+            scan->aes_gcm_rx_key = key;
+        }
 
         
         scan->sock = *peer;
@@ -2470,6 +2497,13 @@ int main(int argc, char* argv[])
     }
     /* else run in NULL mode */
 
+
+    /* set up crypto engine */
+    int err = crypto_init();
+    if (err) {
+        traceEvent(TRACE_ERROR, "Failed to initialize crypto engine: %d", err);
+        return -1;
+    }
 
     eee.udp_sock = open_socket(local_port, 1 /*bind ANY*/ );
     if(eee.udp_sock < 0)
