@@ -431,6 +431,11 @@ static int process_udp( n2n_sn_t * sss,
     /* for PACKET packages */
     n2n_PACKET_t                    pkt; 
 
+    /* for QUERY_PEER packages */
+    n2n_QUERY_PEER_t                query;
+    struct peer_info *              scan;
+    n2n_PEER_INFO_t                 pi;
+
     /* for REGISTER packages */
     n2n_REGISTER_t                  reg;
 
@@ -525,6 +530,38 @@ static int process_udp( n2n_sn_t * sss,
         }
         break;
     case MSG_TYPE_QUERY_PEER:
+        decode_QUERY_PEER( &query, &cmn, udp_buf, &rem, &idx );
+
+        traceEvent( TRACE_DEBUG, "Rx QUERY_PEER from %s for %s",
+                    macaddr_str( mac_buf,  query.srcMac ),
+                    macaddr_str( mac_buf2, query.targetMac ) );
+
+        scan = find_peer_by_mac( sss->edges, query.targetMac );
+        if (scan) {
+            cmn2.ttl = N2N_DEFAULT_TTL;
+            cmn2.pc = n2n_register_super_ack;
+            cmn2.flags = N2N_FLAGS_FROM_SUPERNODE;
+            memcpy( cmn2.community, cmn.community, sizeof(n2n_community_t) );
+
+            pi.aflags = 0;
+            memcpy( pi.mac, query.targetMac, sizeof(n2n_mac_t) );
+            pi.sock1 = scan->sockets[0];
+            if(scan->num_sockets > 1) {
+                pi.aflags |= N2N_AFLAGS_LOCAL_SOCKET;
+                pi.sock2 = scan->sockets[1];
+            }
+            encode_PEER_INFO( encbuf, &encx, &cmn2, &pi );
+
+            sendto( sss->sock, encbuf, encx, 0, 
+                    (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in) );
+
+            traceEvent( TRACE_DEBUG, "Tx PEER_INFO to %s",
+                        macaddr_str( mac_buf, query.srcMac ) );
+        } else {
+            traceEvent( TRACE_DEBUG, "Ignoring QUERY_PEER for unknown edge %s",
+                        macaddr_str( mac_buf, query.targetMac ) );
+        }
+
         break;
     case MSG_TYPE_REGISTER:
         /* Forwarding a REGISTER from one edge to the next */
