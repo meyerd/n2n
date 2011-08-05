@@ -1436,23 +1436,28 @@ static int handle_PACKET( n2n_edge_t * eee,
         uint8_t * decodebuf = decodebuffer;
         size_t eth_size;
         size_t rx_transop_idx=0;
+        int offset;
 
         /* copy eth header to decodebuf */
-        decodebuf += copy_ETHFRAMEHDR(decodebuffer, eth_payload);
+        offset = copy_ETHFRAMEHDR(decodebuffer, payload);
+        decodebuf += offset;
+        payload += offset;
+        psize -= offset;
+        eth_size = offset;
 
         rx_transop_idx = transop_enum_to_index(pkt->transform);
 
         if ( rx_transop_idx >=0 )
         {
             eth_payload = decodebuf;
-            eth_size = eee->transop[rx_transop_idx].rev( &(eee->transop[rx_transop_idx]),
+            eth_size += eee->transop[rx_transop_idx].rev( &(eee->transop[rx_transop_idx]),
                                                          eth_payload, N2N_PKT_BUF_SIZE,
                                                          payload, psize );
             ++(eee->transop[rx_transop_idx].rx_cnt); /* stats */
 
             /* Write ethernet packet to tap device. */
             traceEvent( TRACE_INFO, "sending to TAP %u", (unsigned int)eth_size );
-            data_sent_len = tuntap_write(&(eee->device), eth_payload, eth_size);
+            data_sent_len = tuntap_write(&(eee->device), decodebuffer, eth_size);
 
             if (data_sent_len == eth_size)
             {
