@@ -116,6 +116,7 @@ typedef struct ether_hdr ether_hdr_t;
 #endif /* #ifndef WIN32 */
 
 #include <string.h>
+
 #include <stdarg.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
@@ -192,8 +193,11 @@ struct peer_info {
     time_t              last_seen;
     time_t              last_sent_query;
     size_t              timeout;
+<<<<<<< HEAD
     gnutls_cipher_hd_t  *aes_gcm_tx_ctx;
     gnutls_cipher_hd_t  *aes_gcm_rx_ctx;
+=======
+>>>>>>> master
 };
 typedef struct peer_info peer_info_t;
 

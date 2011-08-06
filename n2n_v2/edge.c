@@ -28,7 +28,6 @@
 #include <assert.h>
 #include <sys/stat.h>
 #include "minilzo.h"
-#include "crypto.h"
 
 #if defined(DEBUG)
 #define SOCKET_TIMEOUT_INTERVAL_SECS    5
@@ -481,8 +480,6 @@ static void edge_deinit(n2n_edge_t * eee)
 
     clear_hashed_peer_info_t_list( eee->pending_peers );
     clear_hashed_peer_info_t_list( eee->known_peers );
-
-    crypto_deinit();
 
     (eee->transop[N2N_TRANSOP_TF_IDX].deinit)(&eee->transop[N2N_TRANSOP_TF_IDX]);
     (eee->transop[N2N_TRANSOP_NULL_IDX].deinit)(&eee->transop[N2N_TRANSOP_NULL_IDX]);
@@ -999,7 +996,7 @@ static void update_peer_address(n2n_edge_t * eee,
             /* anyways, the packet came from supernode. That is potential
              * trouble... just in case we will send a register back to the 
              * origin */
-            send_register( eee, peer, scan->mac_addr );
+            send_register( eee, &(scan->sock), scan->mac_addr );
         }
     }
     else
@@ -1146,8 +1143,8 @@ static int find_peer_destination(n2n_edge_t * eee,
         if(now-scan->last_seen > scan->timeout) {
             /* delete the peer and establish new connection */
 			sglib_hashed_peer_info_t_delete(eee->known_peers, scan);
-            dealloc_peer(scan);
             establish_connection( eee, scan->mac_addr );
+            dealloc_peer(scan);
         } else if(scan->last_seen > 0) {
 			memcpy(destination, &scan->sock, sizeof(n2n_sock_t));
             peer = scan;
@@ -2562,13 +2559,6 @@ int main(int argc, char* argv[])
     }
     /* else run in NULL mode */
 
-
-    /* set up crypto engine */
-    int err = crypto_init();
-    if (err) {
-        traceEvent(TRACE_ERROR, "Failed to initialize crypto engine: %d", err);
-        return -1;
-    }
 
     eee.udp_sock = open_socket(local_port, 1 /*bind ANY*/ );
     if(eee.udp_sock < 0)

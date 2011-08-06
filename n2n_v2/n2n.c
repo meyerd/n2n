@@ -22,7 +22,7 @@
  */
 
 #include "n2n.h"
-#include "crypto.h"
+
 #include "minilzo.h"
 
 #include <assert.h>
