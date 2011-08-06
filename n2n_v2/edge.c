@@ -971,7 +971,7 @@ static void update_peer_address(n2n_edge_t * eee,
             /* anyways, the packet came from supernode. That is potential
              * trouble... just in case we will send a register back to the 
              * origin */
-            send_register( eee, peer, scan->mac_addr );
+            send_register( eee, &(scan->sock), scan->mac_addr );
         }
     }
     else
