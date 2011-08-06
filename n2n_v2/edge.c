@@ -1117,8 +1117,8 @@ static int find_peer_destination(n2n_edge_t * eee,
         if(now-scan->last_seen > scan->timeout) {
             /* delete the peer and establish new connection */
 			sglib_hashed_peer_info_t_delete(eee->known_peers, scan);
-            dealloc_peer(scan);
             establish_connection( eee, scan->mac_addr );
+            dealloc_peer(scan);
         } else if(scan->last_seen > 0) {
 			memcpy(destination, &scan->sock, sizeof(n2n_sock_t));
 			retval = 1;
