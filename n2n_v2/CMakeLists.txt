@@ -54,9 +54,14 @@ endif(NOT WIN32)
 #message(${N2N_OPTION_AES})
 ## DEBUG FOR CMAKE
 
+# install gnutls >= 2.99.0 in your system path or here
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/gnutls/include)
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/gnutls/lib)
+
 add_library(n2n n2n.c
                 n2n_keyfile.c
                 wire.c
+                crypto.c
                 minilzo.c
                 twofish.c
                 transform_null.c
@@ -77,6 +82,8 @@ endif(DEFINED WIN32)
 if(N2N_OPTION_AES)
 target_link_libraries(n2n crypto)
 endif(N2N_OPTION_AES)
+
+target_link_libraries(n2n gnutls gcrypt)
 
 # For Solaris (or OpenSolaris?)
 #target_link_libraries(n2n socket nsl)
