@@ -5,7 +5,7 @@
 #include "crypto.h"
 
 #define GCRYPT_NO_DEPRECATED
-#define KEY_SIZE 32
+#define KEY_SIZE 16
 #define IV_SIZE 12
 #define TAG_SIZE 16
 
@@ -80,7 +80,7 @@ int aes_gcm_session_create(gnutls_datum_t *key, gnutls_cipher_hd_t **ctx)
     iv->size = 12;
 
     /* create encryption context */
-    gnutls_cipher_algorithm_t cipher = GNUTLS_CIPHER_AES_256_GCM;
+    gnutls_cipher_algorithm_t cipher = GNUTLS_CIPHER_AES_128_GCM;
     *ctx = (gnutls_cipher_hd_t *) gnutls_malloc(sizeof(gnutls_cipher_hd_t));
     gt_err = gnutls_cipher_init(*ctx, cipher, key, iv);
     if (gt_err != GNUTLS_E_SUCCESS) {
@@ -94,12 +94,11 @@ int aes_gcm_session_create(gnutls_datum_t *key, gnutls_cipher_hd_t **ctx)
 /* free an encryption handle */
 void aes_gcm_session_destroy(gnutls_cipher_hd_t *ctx)
 {
-    // TODO remove debug output
     if (ctx) {
         gnutls_cipher_deinit(*ctx);
-        printf("AES session closed\n");
+        traceEvent(TRACE_DEBUG, "AES session closed");
     } else  {
-        printf("no AES session to be closed\n");
+        traceEvent(TRACE_DEBUG, "no AES session to be closed");
     }
 }
 

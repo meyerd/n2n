@@ -867,7 +867,7 @@ void set_peer_operational( n2n_edge_t * eee,
             scan->aes_gcm_tx_ctx = NULL;
         } else {
             scan->aes_gcm_tx_ctx = ctx;
-            traceEvent(TRACE_WARNING, "AES session initiated");
+            traceEvent(TRACE_DEBUG, "AES session initiated");
         }
         /* set rx session key */
         err = aes_gcm_session_create(key, &ctx);
@@ -876,7 +876,7 @@ void set_peer_operational( n2n_edge_t * eee,
             scan->aes_gcm_rx_ctx = NULL;
         } else {
             scan->aes_gcm_rx_ctx = ctx;
-            traceEvent(TRACE_WARNING, "AES session initiated");
+            traceEvent(TRACE_DEBUG, "AES session initiated");
         }
 
         scan->sock = *peer;
