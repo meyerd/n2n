@@ -334,9 +334,9 @@ size_t purge_with_function(struct peer_info ** peer_list, size_t(*purger)(struct
 void dealloc_peer( peer_info_t* peer )
 {
     free(peer->sockets);
-    /* zero out key material */
-    aes_gcm_session_destroy(peer->aes_gcm_tx_key, peer->aes_gcm_tx_ctx);
-    aes_gcm_session_destroy(peer->aes_gcm_rx_key, peer->aes_gcm_rx_ctx);
+    /* free encryption handle */
+    aes_gcm_session_destroy(*peer->aes_gcm_tx_ctx);
+    aes_gcm_session_destroy(*peer->aes_gcm_rx_ctx);
     free(peer);
 }
 
@@ -381,8 +381,6 @@ size_t purge_hashed_peer_list_t(peer_info_t ** peer_list, time_t purge_before) {
         if(ll->last_seen < purge_before) {
             ++retval;
             sglib_hashed_peer_info_t_delete(peer_list, ll);
-            aes_gcm_session_destroy(*ll->aes_gcm_tx_ctx);
-            aes_gcm_session_destroy(*ll->aes_gcm_rx_ctx);
             dealloc_peer(ll);
         }
     }
@@ -406,9 +404,7 @@ size_t clear_hashed_peer_info_t_list(peer_info_t ** peer_list) {
 	for(ll=sglib_hashed_peer_info_t_it_init(&it,peer_list); ll!=NULL; ll=sglib_hashed_peer_info_t_it_next(&it)) {
 		++retval;
 		sglib_hashed_peer_info_t_delete(peer_list, ll);
-        aes_gcm_session_destroy(*ll->aes_gcm_tx_ctx);
-        aes_gcm_session_destroy(*ll->aes_gcm_rx_ctx);
-		free(ll);
+        dealloc_peer(ll);
 	}
 
 	return retval;
