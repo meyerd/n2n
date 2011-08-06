@@ -401,7 +401,7 @@ size_t clear_hashed_peer_info_t_list(peer_info_t ** peer_list) {
 	for(ll=sglib_hashed_peer_info_t_it_init(&it,peer_list); ll!=NULL; ll=sglib_hashed_peer_info_t_it_next(&it)) {
 		++retval;
 		sglib_hashed_peer_info_t_delete(peer_list, ll);
-		free(ll);
+        dealloc_peer(ll);
 	}
 
 	return retval;
