@@ -136,6 +136,7 @@ static int update_edge( n2n_sn_t * sss,
         memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
         memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
 
+        scan->timeout = reg->timeout;
         if(reg->aflags & N2N_AFLAGS_LOCAL_SOCKET) {
             scan->num_sockets = 2;
             scan->sockets = malloc(scan->num_sockets*sizeof(n2n_sock_t));
@@ -157,6 +158,7 @@ static int update_edge( n2n_sn_t * sss,
     {
         /* Known */
         int num_changes = 0;
+        scan->timeout = reg->timeout;
         if (0 != memcmp(community, scan->community_name, sizeof(n2n_community_t)))
         {
             memcpy(scan->community_name, community, sizeof(n2n_community_t) );
@@ -546,6 +548,7 @@ static int process_udp( n2n_sn_t * sss,
             memcpy( cmn2.community, cmn.community, sizeof(n2n_community_t) );
 
             pi.aflags = 0;
+            pi.timeout = scan->timeout;
             memcpy( pi.mac, query.targetMac, sizeof(n2n_mac_t) );
             for(i=0; i<scan->num_sockets; i++)
                 pi.sockets[i] = scan->sockets[i];

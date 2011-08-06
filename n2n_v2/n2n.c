@@ -331,6 +331,16 @@ size_t purge_with_function(struct peer_info ** peer_list, size_t(*purger)(struct
   return num_reg;
 }
 
+void dealloc_peer( peer_info_t* peer )
+{
+    free(peer->sockets);
+    /* zero out key material */
+    aes_gcm_session_destroy(peer->aes_gcm_tx_key, peer->aes_gcm_tx_ctx);
+    aes_gcm_session_destroy(peer->aes_gcm_rx_key, peer->aes_gcm_rx_ctx);
+    free(peer);
+}
+
+
 /** Purge old items from the peer_list and return the number of items that were removed. */
 size_t purge_peer_list( struct peer_info ** peer_list,
                         time_t purge_before )
@@ -351,8 +361,7 @@ size_t purge_peer_list( struct peer_info ** peer_list,
                 prev->next = next;
             }
             ++retval;
-            free(scan->sockets);
-            free(scan);
+            dealloc_peer(scan);
             scan = next;
         } else {
             prev = scan;
@@ -372,11 +381,7 @@ size_t purge_hashed_peer_list_t(peer_info_t ** peer_list, time_t purge_before) {
         if(ll->last_seen < purge_before) {
             ++retval;
             sglib_hashed_peer_info_t_delete(peer_list, ll);
-            free(ll->sockets);
-            /* zero out key material */
-            aes_gcm_session_destroy(ll->aes_gcm_tx_key, ll->aes_gcm_tx_ctx);
-            aes_gcm_session_destroy(ll->aes_gcm_rx_key, ll->aes_gcm_rx_ctx);
-            free(ll);
+            dealloc_peer(ll);
         }
     }
 

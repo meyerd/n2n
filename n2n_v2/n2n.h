@@ -190,6 +190,7 @@ struct peer_info {
     n2n_sock_t *        sockets;
     time_t              last_seen;
     time_t              last_sent_query;
+    size_t              timeout;
     uint8_t             *aes_gcm_tx_ctx;
     gnutls_datum_t      *aes_gcm_tx_key;
     uint8_t             *aes_gcm_rx_ctx;
@@ -286,6 +287,7 @@ struct peer_info * find_peer_by_mac( peer_info_t ** list,
 void   peer_list_add( struct peer_info * * list,
                       struct peer_info * new );
 size_t peer_list_size( const struct peer_info * list );
+void dealloc_peer( peer_info_t* peer );
 size_t hashed_peer_list_t_size(peer_info_t** htab);
 size_t purge_with_function(struct peer_info ** peer_list, size_t(*purger)(struct peer_info ** peer_list, time_t purge_before));
 size_t purge_peer_list( struct peer_info ** peer_list, 

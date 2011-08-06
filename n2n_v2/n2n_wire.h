@@ -157,8 +157,9 @@ typedef struct n2n_ETHFRAMEHDR n2n_ETHFRAMEHDR_t;
 /* Linked with n2n_register_super in n2n_pc_t. Only from edge to supernode. */
 struct n2n_REGISTER_SUPER
 {
-    uint16_t             aflags;         /* additional flags */
+    uint16_t            aflags;         /* additional flags */
     n2n_cookie_t        cookie;         /* Link REGISTER_SUPER and REGISTER_SUPER_ACK */
+    uint16_t            timeout;
     n2n_mac_t           edgeMac;        /* MAC to register with edge sending socket */
     n2n_auth_t          auth;           /* Authentication scheme and tokens */
     n2n_sock_t          local_sock;
@@ -200,6 +201,7 @@ typedef struct n2n_REGISTER_SUPER_NAK n2n_REGISTER_SUPER_NAK_t;
 struct n2n_PEER_INFO
 {
     uint16_t    aflags;
+    uint16_t    timeout;
     n2n_mac_t   mac;
     n2n_sock_t  sockets[2];
 };

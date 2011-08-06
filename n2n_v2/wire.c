@@ -272,6 +272,7 @@ int encode_REGISTER_SUPER( uint8_t * base,
     int retval=0;
     retval += encode_common( base, idx, common );
     retval += encode_uint16( base, idx, reg->aflags );
+    retval += encode_uint16( base, idx, reg->timeout );
     retval += encode_buf( base, idx, reg->cookie, N2N_COOKIE_SIZE );
     retval += encode_mac( base, idx, reg->edgeMac );
     retval += encode_uint16( base, idx, 0 ); /* NULL auth scheme */
@@ -291,6 +292,7 @@ int decode_REGISTER_SUPER( n2n_REGISTER_SUPER_t * reg,
     size_t retval=0;
     memset( reg, 0, sizeof(n2n_REGISTER_SUPER_t) );
     retval += decode_uint16( &(reg->aflags), base, rem, idx );
+    retval += decode_uint16( &(reg->timeout), base, rem, idx );
     retval += decode_buf( reg->cookie, N2N_COOKIE_SIZE, base, rem, idx );
     retval += decode_mac( reg->edgeMac, base, rem, idx );
     retval += decode_uint16( &(reg->auth.scheme), base, rem, idx );
@@ -310,6 +312,7 @@ int encode_PEER_INFO( uint8_t * base,
     int retval=0;
     retval += encode_common( base, idx, common );
     retval += encode_uint16( base, idx, pi->aflags );
+    retval += encode_uint16( base, idx, pi->timeout );
     retval += encode_mac( base, idx, pi->mac );
     retval += encode_sock( base, idx, pi->sockets );
     if(pi->aflags & N2N_AFLAGS_LOCAL_SOCKET)
@@ -327,6 +330,7 @@ int decode_PEER_INFO( n2n_PEER_INFO_t * pi,
     size_t retval=0;
     memset( pi, 0, sizeof(n2n_PEER_INFO_t) );
     retval += decode_uint16( &(pi->aflags), base, rem, idx );
+    retval += decode_uint16( &(pi->timeout), base, rem, idx );
     retval += decode_mac( pi->mac, base, rem, idx );
     retval += decode_sock( pi->sockets, base, rem, idx );
     if(pi->aflags & N2N_AFLAGS_LOCAL_SOCKET)

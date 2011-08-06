@@ -32,10 +32,10 @@
 
 #if defined(DEBUG)
 #define SOCKET_TIMEOUT_INTERVAL_SECS    5
-#define REGISTER_SUPER_INTERVAL_DFL     20 /* sec */
+#define DEFAULT_HOLEPUNCH_INTERVAL      20 /* sec */
 #else  /* #if defined(DEBUG) */
 #define SOCKET_TIMEOUT_INTERVAL_SECS    5
-#define REGISTER_SUPER_INTERVAL_DFL     25 /* sec */
+#define DEFAULT_HOLEPUNCH_INTERVAL      25 /* sec */
 #endif /* #if defined(DEBUG) */
 
 #define REGISTER_SUPER_INTERVAL_MIN     10   /* sec */
@@ -122,7 +122,7 @@ struct n2n_edge
 	struct peer_info *  known_peers[PEER_HASH_TAB_SIZE];            /**< Edges we are connected to. */
     struct peer_info *  pending_peers[PEER_HASH_TAB_SIZE];          /**< Edges we have tried to register with. */
     time_t              last_register_req;      /**< Check if time to re-register with super*/
-    size_t              register_lifetime;      /**< Time distance after last_register_req at which to re-register. */
+    size_t              holepunch_interval;      /**< Time distance after last_register_req at which to re-register. */
     time_t              last_purge;             /** last time clients were purged **/
     time_t              last_p2p;               /**< Last time p2p traffic was received. */
     time_t              last_sup;               /**< Last time a packet arrived from supernode. */
@@ -318,7 +318,7 @@ static int edge_init(n2n_edge_t * eee)
 	sglib_hashed_peer_info_t_init(eee->known_peers);
 	sglib_hashed_peer_info_t_init(eee->pending_peers);
     eee->last_register_req = 0;
-    eee->register_lifetime = REGISTER_SUPER_INTERVAL_DFL;
+    eee->holepunch_interval = DEFAULT_HOLEPUNCH_INTERVAL;
     eee->last_p2p = 0;
     eee->last_sup = 0;
     eee->last_purge = 0;
@@ -667,6 +667,7 @@ static void send_register_super( n2n_edge_t * eee,
     reg.aflags = 0;
     memcpy( reg.cookie, eee->last_cookie, N2N_COOKIE_SIZE );
     reg.auth.scheme=0; /* No auth yet */
+    reg.timeout = eee->holepunch_interval;
 
     idx=0;
     encode_mac( reg.edgeMac, &idx, eee->device.mac_addr );
@@ -743,10 +744,8 @@ void check_peer( n2n_edge_t * eee,
                  uint8_t from_supernode,
                  const n2n_mac_t mac,
                  const n2n_sock_t * peer );
-void try_send_register( n2n_edge_t * eee,
-                        uint8_t from_supernode,
-                        const n2n_mac_t mac,
-                        const n2n_sock_t * peer );
+void establish_connection( n2n_edge_t * eee,
+                        const n2n_mac_t mac );
 void set_peer_operational( n2n_edge_t * eee,
                            const n2n_mac_t mac,
                            const n2n_sock_t * peer );
@@ -756,7 +755,7 @@ void set_peer_operational( n2n_edge_t * eee,
 /** Start the registration process.
  *
  *  If the peer is already in pending_peers, ignore the request.
- *  If not in pending_peers, add it and send a REGISTER.
+ *  If not in pending_peers, add it and query info about it from supernode
  *
  *  If hdr is for a direct peer-to-peer packet, try to register back to sender
  *  even if the MAC is in pending_peers. This is because an incident direct
@@ -766,10 +765,8 @@ void set_peer_operational( n2n_edge_t * eee,
  *
  *  Called from the main loop when Rx a packet for our device mac.
  */
-void try_send_register( n2n_edge_t * eee,
-                        uint8_t from_supernode,
-                        const n2n_mac_t mac,
-                        const n2n_sock_t * peer )
+void establish_connection( n2n_edge_t * eee,
+                        const n2n_mac_t mac )
 {
     struct peer_info * scan = find_peer_by_mac( eee->pending_peers, mac );
     macstr_t mac_buf;
@@ -782,7 +779,7 @@ void try_send_register( n2n_edge_t * eee,
 
         memcpy(scan->mac_addr, mac, N2N_MAC_SIZE);
         scan->num_sockets = 0;
-        scan->sock = *peer;
+        scan->sock = eee->supernode;
         scan->last_seen = now; /* Don't change this it marks the pending peer for removal. */
 
 		sglib_hashed_peer_info_t_add(eee->pending_peers, scan);
@@ -819,7 +816,7 @@ void check_peer( n2n_edge_t * eee,
 	if (sglib_hashed_peer_info_t_find_member(eee->known_peers, &scan) == NULL)
     {
         /* Not in known_peers - start the REGISTER process. */
-        try_send_register( eee, from_supernode, mac, peer );
+        establish_connection( eee, mac );
     }
     else
     {
@@ -990,24 +987,27 @@ static void update_peer_address(n2n_edge_t * eee,
             /* The peer has changed public socket. It can no longer be assumed to be reachable. */
             /* Remove the peer. */
 			sglib_hashed_peer_info_t_delete(eee->known_peers, scan);
-            free(scan->sockets);
-            free(scan);
+            dealloc_peer(scan);
 
-            try_send_register( eee, from_supernode, mac, peer );
+            establish_connection( eee, mac );
         }
         else
         {
-            /* Don't worry about what the supernode reports, it could be seeing a different socket. */
+            /* Don't worry about what the supernode reports, it could be seeing
+             * a different socket. */
+            /* anyways, the packet came from supernode. That is potential
+             * trouble... just in case we will send a register back to the 
+             * origin */
+            send_register( eee, peer, scan->mac_addr );
         }
     }
     else
     {
         /* Found and unchanged. */
-        scan->last_seen = when;
+        if(!from_supernode)
+            scan->last_seen = when;
     }
 }
-
-
 
 #if defined(DUMMY_ID_00001) /* Disabled waiting for config option to enable it */
 
@@ -1067,12 +1067,12 @@ static void send_grat_arps(n2n_edge_t * eee,) {
  */
 static void update_supernode_reg( n2n_edge_t * eee, time_t nowTime )
 {
-    if ( eee->sn_wait && ( nowTime > (eee->last_register_req + (eee->register_lifetime/10) ) ) )
+    if ( eee->sn_wait && ( nowTime > (eee->last_register_req + (eee->holepunch_interval/10) ) ) )
     {
         /* fall through */
         traceEvent( TRACE_DEBUG, "update_supernode_reg: doing fast retry." );
     }
-    else if ( nowTime < (eee->last_register_req + eee->register_lifetime))
+    else if ( nowTime < (eee->last_register_req + eee->holepunch_interval))
     {
         return; /* Too early */
     }
@@ -1117,7 +1117,7 @@ static void update_supernode_reg( n2n_edge_t * eee, time_t nowTime )
 }
 
 
-#define RETRY_INTERVAL 30
+#define RETRY_INTERVAL 5
 
 
 /* @return 1 if destination is a peer, 0 if destination is supernode */
@@ -1141,7 +1141,12 @@ static int find_peer_destination(n2n_edge_t * eee,
 	memcpy(tmp.mac_addr, mac_address, sizeof(n2n_mac_t));
 	scan = sglib_hashed_peer_info_t_find_member(eee->known_peers, &tmp);
 	if(scan) {
-		if(scan->last_seen > 0) {
+        if(now-scan->last_seen > scan->timeout) {
+            /* delete the peer and establish new connection */
+			sglib_hashed_peer_info_t_delete(eee->known_peers, scan);
+            dealloc_peer(scan);
+            establish_connection( eee, scan->mac_addr );
+        } else if(scan->last_seen > 0) {
 			memcpy(destination, &scan->sock, sizeof(n2n_sock_t));
 			retval = 1;
 		}
@@ -1188,7 +1193,7 @@ static const struct option long_options[] = {
   { "euid",               required_argument, NULL, 'u' },
   { "egid",               required_argument, NULL, 'g' },
   { "local-ip",           required_argument, NULL, 'L' },
-  { "supernode-interval", required_argument, NULL, 'i' },
+  { "holepunch-interval", required_argument, NULL, 'i' },
   { "help"   ,            no_argument,       NULL, 'h' },
   { "verbose",            no_argument,       NULL, 'v' },
   { NULL,                 0,                 NULL,  0  }
@@ -1863,6 +1868,7 @@ static void readFromIPSocket( n2n_edge_t * eee )
 
             scan = find_peer_by_mac( eee->pending_peers, pi.mac );
             if (scan) {
+                scan->timeout = pi.timeout;
                 if (scan->num_sockets > 0)
                     free(scan->sockets);
                 if (pi.aflags & N2N_AFLAGS_LOCAL_SOCKET)
@@ -1954,9 +1960,9 @@ static void readFromIPSocket( n2n_edge_t * eee )
                     /* REVISIT: store sn_back */
                     /* don't adjust lifetime according to supernode - this value should be specified
                      * by the client (because dependent on NAT/firewall) (lukas) 
-                    eee->register_lifetime = rsa.lifetime;
-                    eee->register_lifetime = MAX( eee->register_lifetime, REGISTER_SUPER_INTERVAL_MIN );
-                    eee->register_lifetime = MIN( eee->register_lifetime, REGISTER_SUPER_INTERVAL_MAX );
+                    eee->holepunch_interval = rsa.lifetime;
+                    eee->holepunch_interval = MAX( eee->holepunch_interval, REGISTER_SUPER_INTERVAL_MIN );
+                    eee->holepunch_interval = MIN( eee->holepunch_interval, REGISTER_SUPER_INTERVAL_MAX );
                      */
                 }
                 else
@@ -2375,11 +2381,11 @@ int main(int argc, char* argv[])
             break;
         }
 
-        case 'i': /* supernode registration interval */
+        case 'i': /* holepunch-interval */
         {
-            eee.register_lifetime = atoi(optarg);
-            eee.register_lifetime = MAX( eee.register_lifetime, REGISTER_SUPER_INTERVAL_MIN );
-            eee.register_lifetime = MIN( eee.register_lifetime, REGISTER_SUPER_INTERVAL_MAX );
+            eee.holepunch_interval = atoi(optarg);
+            eee.holepunch_interval = MAX( eee.holepunch_interval, REGISTER_SUPER_INTERVAL_MIN );
+            eee.holepunch_interval = MIN( eee.holepunch_interval, REGISTER_SUPER_INTERVAL_MAX );
             break;
         }
         case 'L': /* local ip */
