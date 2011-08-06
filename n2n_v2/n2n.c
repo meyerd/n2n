@@ -22,7 +22,7 @@
  */
 
 #include "n2n.h"
-#include "crypto.h"
+
 #include "minilzo.h"
 
 #include <assert.h>
@@ -334,9 +334,6 @@ size_t purge_with_function(struct peer_info ** peer_list, size_t(*purger)(struct
 void dealloc_peer( peer_info_t* peer )
 {
     free(peer->sockets);
-    /* zero out key material */
-    aes_gcm_session_destroy(peer->aes_gcm_tx_key, peer->aes_gcm_tx_ctx);
-    aes_gcm_session_destroy(peer->aes_gcm_rx_key, peer->aes_gcm_rx_ctx);
     free(peer);
 }
 
@@ -404,9 +401,6 @@ size_t clear_hashed_peer_info_t_list(peer_info_t ** peer_list) {
 	for(ll=sglib_hashed_peer_info_t_it_init(&it,peer_list); ll!=NULL; ll=sglib_hashed_peer_info_t_it_next(&it)) {
 		++retval;
 		sglib_hashed_peer_info_t_delete(peer_list, ll);
-        /* zero out key material */
-        aes_gcm_session_destroy(ll->aes_gcm_tx_key, ll->aes_gcm_tx_ctx);
-        aes_gcm_session_destroy(ll->aes_gcm_rx_key, ll->aes_gcm_rx_ctx);
 		free(ll);
 	}
 
