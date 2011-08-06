@@ -841,7 +841,7 @@ void set_peer_operational( n2n_edge_t * eee,
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
     void *key;  // dummy key
-    void *ctx = NULL;
+    gnutls_cipher_hd_t *ctx = NULL;
     int err;
 
     traceEvent( TRACE_INFO, "set_peer_operational: %s -> %s",
@@ -861,23 +861,24 @@ void set_peer_operational( n2n_edge_t * eee,
 
         /* TODO: DH and key derivation, for now set dummy keys */
         /* set tx session key */
-        key = aes_gcm_dummy_key();
-        err = aes_gcm_session_create(key, ctx);
+        key = aes_gcm_dummy_key();  //TODO destroy key
+        err = aes_gcm_session_create(key, &ctx);
         if (err) {
             traceEvent(TRACE_ERROR, "Failed to initialize AES session: %d", err);
             scan->aes_gcm_tx_ctx = NULL;
         } else {
             scan->aes_gcm_tx_ctx = ctx;
-            scan->aes_gcm_tx_key = key;
+            traceEvent(TRACE_WARNING, "AES session initiated");
         }
         /* set rx session key */
-        err = aes_gcm_session_create(key, ctx);
+        err = aes_gcm_session_create(key, &ctx);
         if (err) {
             traceEvent(TRACE_ERROR, "Failed to initialize AES session: %d", err);
             scan->aes_gcm_rx_ctx = NULL;
         } else {
             scan->aes_gcm_rx_ctx = ctx;
-            scan->aes_gcm_rx_key = key;
+            traceEvent(TRACE_WARNING, "AES session initiated");
+            //scan->aes_gcm_rx_key = key;
         }
 
         
@@ -1123,7 +1124,8 @@ static void update_supernode_reg( n2n_edge_t * eee, time_t nowTime )
 /* @return 1 if destination is a peer, 0 if destination is supernode */
 static int find_peer_destination(n2n_edge_t * eee,
                                  n2n_mac_t mac_address,
-                                 n2n_sock_t * destination)
+                                 n2n_sock_t *destination,
+                                 peer_info_t *peer)
 {
 	peer_info_t tmp;
 	peer_info_t* scan = NULL;
@@ -1148,6 +1150,7 @@ static int find_peer_destination(n2n_edge_t * eee,
             establish_connection( eee, scan->mac_addr );
         } else if(scan->last_seen > 0) {
 			memcpy(destination, &scan->sock, sizeof(n2n_sock_t));
+            peer = scan;
 			retval = 1;
 		}
 	}
@@ -1260,6 +1263,7 @@ static void send_packet2net(n2n_edge_t * eee,
     int dest;
     int offset;
     n2n_sock_t destination;
+    peer_info_t *peer = NULL;
 
     /* tap_pkt is not aligned so we have to copy to aligned memory */
     memcpy( &eh, tap_pkt, sizeof(ether_hdr_t) );
@@ -1295,7 +1299,7 @@ static void send_packet2net(n2n_edge_t * eee,
     cmn.flags=0; /* no options, not from supernode, no socket */
     memcpy( cmn.community, eee->community_name, N2N_COMMUNITY_SIZE );
 
-    dest = find_peer_destination(eee, destMac, &destination);
+    dest = find_peer_destination(eee, destMac, &destination, peer);
 
     memset( &pkt, 0, sizeof(pkt) );
 
@@ -1314,10 +1318,22 @@ static void send_packet2net(n2n_edge_t * eee,
     traceEvent( TRACE_DEBUG, "encoded PACKET header of size=%u transform %u (idx=%u)", 
                 (unsigned int)idx, (unsigned int)pkt.transform, (unsigned int)tx_transop_idx );
 
-    idx += eee->transop[tx_transop_idx].fwd( &(eee->transop[tx_transop_idx]),
-                                             pktbuf+idx, N2N_PKT_BUF_SIZE-idx,
-                                             tap_pkt, len );
-    ++(eee->transop[tx_transop_idx].tx_cnt); /* stats */
+    /* if we know the peer TODO: DH and key derivation */
+    int err;
+    if (peer == NULL) {
+        traceEvent(TRACE_WARNING, "ENC: NONE");
+        memcpy(pktbuf + idx, tap_pkt, len);
+    } else {
+        traceEvent(TRACE_WARNING, "ENC: AES");
+        err = aes_gcm_authenc(*(peer->aes_gcm_tx_ctx), tap_pkt, len,
+                pktbuf + idx, N2N_PKT_BUF_SIZE - idx, NULL, 0);
+        if (err < 0) {
+            ; //TODO error condition
+        } else {
+            idx += err;
+        }
+    }
+
 
     if ( dest )
     {
@@ -1436,6 +1452,8 @@ static int handle_PACKET( n2n_edge_t * eee,
     int                 retval = -1;
     time_t              now;
     n2n_ETHFRAMEHDR_t   eth;
+    peer_info_t         tmp;
+    peer_info_t         *peer;
 
     now = time(NULL);
 
@@ -1463,11 +1481,12 @@ static int handle_PACKET( n2n_edge_t * eee,
     check_peer( eee, from_supernode, eth.srcMac, orig_sender);
 
     /* Handle transform. */
-    {
+    memcpy(tmp.mac_addr, eth.srcMac, sizeof(n2n_mac_t));
+    peer = sglib_hashed_peer_info_t_find_member(eee->known_peers, &tmp);
+    if (peer != NULL) {
         uint8_t decodebuffer[N2N_PKT_BUF_SIZE];
         uint8_t * decodebuf = decodebuffer;
         size_t eth_size;
-        size_t rx_transop_idx=0;
         int offset;
 
         /* copy eth header to decodebuf */
@@ -1477,30 +1496,23 @@ static int handle_PACKET( n2n_edge_t * eee,
         psize -= offset;
         eth_size = offset;
 
-        rx_transop_idx = transop_enum_to_index(pkt->transform);
-
-        if ( rx_transop_idx >=0 )
-        {
-            eth_payload = decodebuf;
-            eth_size += eee->transop[rx_transop_idx].rev( &(eee->transop[rx_transop_idx]),
-                                                         eth_payload, N2N_PKT_BUF_SIZE,
-                                                         payload, psize );
-            ++(eee->transop[rx_transop_idx].rx_cnt); /* stats */
-
-            /* Write ethernet packet to tap device. */
-            traceEvent( TRACE_INFO, "sending to TAP %u", (unsigned int)eth_size );
-            data_sent_len = tuntap_write(&(eee->device), decodebuffer, eth_size);
-
-            if (data_sent_len == eth_size)
-            {
-                retval = 0;
-            }
+        /* authenticate and decrypt */
+        int err;
+        eth_payload = decodebuf;
+        err = aes_gcm_authdec(*(peer->aes_gcm_rx_ctx), payload, psize,
+                eth_payload, N2N_PKT_BUF_SIZE, NULL, 0);
+        /* authentication failed or other error occured */
+        if (err < 0) {
+            traceEvent(TRACE_WARNING, "packet authentication or decryption failed");
+            return err;
         }
-        else
-        {
-            traceEvent( TRACE_ERROR, "handle_PACKET dropped unknown transform enum %u", 
-                        (unsigned int)pkt->transform );
-        }
+
+        /* Write ethernet packet to tap device. */
+        traceEvent( TRACE_INFO, "sending to TAP %u", (unsigned int)eth_size );
+        data_sent_len = tuntap_write(&(eee->device), decodebuffer, eth_size);
+
+        if (data_sent_len == eth_size)
+            retval = 0;
     }
 
     return retval;
