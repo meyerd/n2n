@@ -335,8 +335,8 @@ void dealloc_peer( peer_info_t* peer )
 {
     free(peer->sockets);
     /* free encryption handle */
-    aes_gcm_session_destroy(*peer->aes_gcm_tx_ctx);
-    aes_gcm_session_destroy(*peer->aes_gcm_rx_ctx);
+    aes_gcm_session_destroy(peer->aes_gcm_tx_ctx);
+    aes_gcm_session_destroy(peer->aes_gcm_rx_ctx);
     free(peer);
 }
 

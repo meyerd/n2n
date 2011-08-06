@@ -92,11 +92,11 @@ int aes_gcm_session_create(gnutls_datum_t *key, gnutls_cipher_hd_t **ctx)
 
 
 /* free an encryption handle */
-void aes_gcm_session_destroy(gnutls_cipher_hd_t ctx)
+void aes_gcm_session_destroy(gnutls_cipher_hd_t *ctx)
 {
     // TODO remove debug output
     if (ctx) {
-        gnutls_cipher_deinit(ctx);
+        gnutls_cipher_deinit(*ctx);
         printf("AES session closed\n");
     } else  {
         printf("no AES session to be closed\n");
