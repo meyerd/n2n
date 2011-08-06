@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <sys/stat.h>
 #include "minilzo.h"
+#include "crypto.h"
 
 #if defined(DEBUG)
 #define SOCKET_TIMEOUT_INTERVAL_SECS    5
@@ -480,6 +481,7 @@ static void edge_deinit(n2n_edge_t * eee)
 
     clear_hashed_peer_info_t_list( eee->pending_peers );
     clear_hashed_peer_info_t_list( eee->known_peers );
+    crypto_deinit();
 
     (eee->transop[N2N_TRANSOP_TF_IDX].deinit)(&eee->transop[N2N_TRANSOP_TF_IDX]);
     (eee->transop[N2N_TRANSOP_NULL_IDX].deinit)(&eee->transop[N2N_TRANSOP_NULL_IDX]);
@@ -875,10 +877,8 @@ void set_peer_operational( n2n_edge_t * eee,
         } else {
             scan->aes_gcm_rx_ctx = ctx;
             traceEvent(TRACE_WARNING, "AES session initiated");
-            //scan->aes_gcm_rx_key = key;
         }
 
-        
         scan->sock = *peer;
 
         traceEvent( TRACE_DEBUG, "=== new peer %s -> %s",
@@ -2501,6 +2501,12 @@ int main(int argc, char* argv[])
            ) )
     {
         help();
+    }
+
+    int c_err = crypto_init();
+    if (c_err) {
+        traceEvent(TRACE_WARNING, "Encryption engine failed: %d", c_err);
+        return -1;
     }
 
     if ( (NULL == encrypt_key ) && ( 0 == strlen(eee.keyschedule)) )

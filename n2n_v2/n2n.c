@@ -24,7 +24,7 @@
 #include "n2n.h"
 
 #include "minilzo.h"
-
+#include "crypto.h"
 #include <assert.h>
 
 /* sglib hash table implementation */
