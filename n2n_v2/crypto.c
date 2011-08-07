@@ -162,6 +162,7 @@ int aes_gcm_authenc(gnutls_cipher_hd_t ctx, uint8_t *pt, size_t pt_len,
         return gt_err;
     }
     memcpy(ptr, tag, TAG_SIZE);
+    ptr += TAG_SIZE;
     return (int) (ptr - out);
 }
 
@@ -178,6 +179,7 @@ int aes_gcm_authdec(gnutls_cipher_hd_t ctx, uint8_t *in, size_t in_len, uint8_t
     uint8_t *ptr;
 
     // TODO we might want to consider padding as in rfc5246 6.2.3.2
+    // authenticate with padding of wrong lenght, else timing attack
 
     /* abuse the pkcs #12 MAC error to signal failed authentication */
     if (in_len < IV_SIZE + TAG_SIZE)
