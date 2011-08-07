@@ -1122,7 +1122,7 @@ static void update_supernode_reg( n2n_edge_t * eee, time_t nowTime )
 static int find_peer_destination(n2n_edge_t * eee,
                                  n2n_mac_t mac_address,
                                  n2n_sock_t *destination,
-                                 peer_info_t *peer)
+                                 peer_info_t **peer)
 {
 	peer_info_t tmp;
 	peer_info_t* scan = NULL;
@@ -1147,7 +1147,7 @@ static int find_peer_destination(n2n_edge_t * eee,
             dealloc_peer(scan);
         } else if(scan->last_seen > 0) {
 			memcpy(destination, &scan->sock, sizeof(n2n_sock_t));
-            peer = scan;
+            *peer = scan;
 			retval = 1;
 		}
 	}
@@ -1296,7 +1296,7 @@ static void send_packet2net(n2n_edge_t * eee,
     cmn.flags=0; /* no options, not from supernode, no socket */
     memcpy( cmn.community, eee->community_name, N2N_COMMUNITY_SIZE );
 
-    dest = find_peer_destination(eee, destMac, &destination, peer);
+    dest = find_peer_destination(eee, destMac, &destination, &peer);
 
     memset( &pkt, 0, sizeof(pkt) );
 
@@ -1320,6 +1320,7 @@ static void send_packet2net(n2n_edge_t * eee,
     if (peer == NULL) {
         traceEvent(TRACE_WARNING, "ENC: NONE");
         memcpy(pktbuf + idx, tap_pkt, len);
+        idx += len;
     } else {
         traceEvent(TRACE_WARNING, "ENC: AES");
         err = aes_gcm_authenc(*(peer->aes_gcm_tx_ctx), tap_pkt, len,
@@ -1480,19 +1481,20 @@ static int handle_PACKET( n2n_edge_t * eee,
     /* Handle transform. */
     memcpy(tmp.mac_addr, eth.srcMac, sizeof(n2n_mac_t));
     peer = sglib_hashed_peer_info_t_find_member(eee->known_peers, &tmp);
+
+    uint8_t decodebuffer[N2N_PKT_BUF_SIZE];
+    uint8_t * decodebuf = decodebuffer;
+    size_t eth_size;
+    int offset;
+
+    /* copy eth header to decodebuf */
+    offset = copy_ETHFRAMEHDR(decodebuffer, payload);
+    decodebuf += offset;
+    payload += offset;
+    psize -= offset;
+    eth_size = offset;
+
     if (peer != NULL) {
-        uint8_t decodebuffer[N2N_PKT_BUF_SIZE];
-        uint8_t * decodebuf = decodebuffer;
-        size_t eth_size;
-        int offset;
-
-        /* copy eth header to decodebuf */
-        offset = copy_ETHFRAMEHDR(decodebuffer, payload);
-        decodebuf += offset;
-        payload += offset;
-        psize -= offset;
-        eth_size = offset;
-
         /* authenticate and decrypt */
         int err;
         eth_payload = decodebuf;
@@ -1500,17 +1502,20 @@ static int handle_PACKET( n2n_edge_t * eee,
                 eth_payload, N2N_PKT_BUF_SIZE, NULL, 0);
         /* authentication failed or other error occured */
         if (err < 0) {
-            traceEvent(TRACE_WARNING, "packet authentication or decryption failed");
+            traceEvent(TRACE_WARNING,
+                    "packet authentication or decryption failed");
             return err;
         }
-
-        /* Write ethernet packet to tap device. */
-        traceEvent( TRACE_INFO, "sending to TAP %u", (unsigned int)eth_size );
-        data_sent_len = tuntap_write(&(eee->device), decodebuffer, eth_size);
-
-        if (data_sent_len == eth_size)
-            retval = 0;
+    } else {
+        memcpy(decodebuf, payload, psize);
     }
+
+    /* Write ethernet packet to tap device. */
+    traceEvent( TRACE_INFO, "sending to TAP %u", (unsigned int)eth_size );
+    data_sent_len = tuntap_write(&(eee->device), decodebuffer, eth_size);
+
+    if (data_sent_len == eth_size)
+        retval = 0;
 
     return retval;
 }
