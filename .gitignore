@@ -17,3 +17,6 @@ test
 ~$
 *.swp
 *.swo
+cscope.out
+gmon.out
+tags
