@@ -21,14 +21,32 @@ derived_key = hmac_sha256(key, hmac_sha256(key, seed) + seed)
 to consider: choice of seed
 
 
+IV choice
+=========
+
+GCM in IPsec ESP (RFC 4106):
+4B salt: unpredictable but constant for SA lifetime
+8B IV:   LFSR or counter [garantee uniqueness]
+
+GCM in SSH (RFC 5647) [note: not implemented in openssh 5.8]:
+4B fixed
+8B invocation counter
+
+
 Packet format
 =============
 
+We choose the encrypting and authenticating AES GCM mode for performance
+security. gcm 256 is not implemented in gnutls, so we use 128 bit.
+
 to consider:
-- IV choice
 - which fields to authenticate with GCM, but not encrypt (e.g. MAC addr)
+- pad authentication data / plain text to block size?
+  [according to nettle spec this is not needed, we might do it anyway on the
+   plain text to make statistical analysis more difficult]
 
 planned payload AES GCM 256 bit:
+?B crypto protocol version [authenticated]
 12B IV
 ---enc---
     ?B  plaintext
@@ -80,6 +98,10 @@ http://www.nsa.gov/ia/programs/suiteb_cryptography/
 
 NIST Key management recommendations
 http://csrc.nist.gov/publications/nistpubs/800-57/sp800-57-Part1-revised2_Mar08-2007.pdf p. 63
+
+The Order of Encryption and Authentication for Protecting Communications
+http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.106.5488&rep=rep1&type=pdf
+(authenticate then encrypt vs encrypt then authenticate discussion)
 
 GCM spec/proposal, http://www.cryptobarn.com/gcm/
 http://www.cryptobarn.com/papers/gcm-spec.pdf
