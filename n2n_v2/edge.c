@@ -1505,9 +1505,12 @@ static int handle_PACKET( n2n_edge_t * eee,
             traceEvent(TRACE_WARNING,
                     "packet authentication or decryption failed");
             return err;
+        } else {
+            eth_size += err;
         }
     } else {
         memcpy(decodebuf, payload, psize);
+        eth_size += psize;
     }
 
     /* Write ethernet packet to tap device. */
