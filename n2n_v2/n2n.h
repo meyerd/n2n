@@ -118,6 +118,7 @@ typedef struct ether_hdr ether_hdr_t;
 #include <string.h>
 #include <stdarg.h>
 #include <gnutls/gnutls.h>
+#include <gnutls/crypto.h>
 
 #ifdef WIN32
 #include "win32/wintap.h"
@@ -153,6 +154,8 @@ typedef struct tuntap_dev {
 #define MSG_TYPE_REGISTER_SUPER_ACK     6
 #define MSG_TYPE_REGISTER_SUPER_NAK     7
 #define MSG_TYPE_FEDERATION             8
+#define MSG_TYPE_PEER_INFO              9
+#define MSG_TYPE_QUERY_PEER            10
 
 /* Set N2N_COMPRESSION_ENABLED to 0 to disable lzo1x compression of ethernet
  * frames. Doing this will break compatibility with the standard n2n packet
@@ -184,12 +187,13 @@ struct peer_info {
     n2n_community_t     community_name;
     n2n_mac_t           mac_addr;
     n2n_sock_t          sock;
-    n2n_sock_t *        local_sock;
+    int                 num_sockets;
+    n2n_sock_t *        sockets;
     time_t              last_seen;
-    uint8_t             *aes_gcm_tx_ctx;
-    gnutls_datum_t      *aes_gcm_tx_key;
-    uint8_t             *aes_gcm_rx_ctx;
-    gnutls_datum_t      *aes_gcm_rx_key;
+    time_t              last_sent_query;
+    size_t              timeout;
+    gnutls_cipher_hd_t  *aes_gcm_tx_ctx;
+    gnutls_cipher_hd_t  *aes_gcm_rx_ctx;
 };
 typedef struct peer_info peer_info_t;
 
@@ -282,6 +286,7 @@ struct peer_info * find_peer_by_mac( peer_info_t ** list,
 void   peer_list_add( struct peer_info * * list,
                       struct peer_info * new );
 size_t peer_list_size( const struct peer_info * list );
+void dealloc_peer( peer_info_t* peer );
 size_t hashed_peer_list_t_size(peer_info_t** htab);
 size_t purge_with_function(struct peer_info ** peer_list, size_t(*purger)(struct peer_info ** peer_list, time_t purge_before));
 size_t purge_peer_list( struct peer_info ** peer_list, 

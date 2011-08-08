@@ -85,6 +85,8 @@ if(N2N_OPTION_AES)
 target_link_libraries(n2n crypto)
 endif(N2N_OPTION_AES)
 
+target_link_libraries(n2n gnutls gcrypt)
+
 # For Solaris (or OpenSolaris?)
 #target_link_libraries(n2n socket nsl)
 

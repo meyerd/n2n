@@ -47,14 +47,17 @@ enum n2n_pc
     n2n_register_super=5,       /* Register edge to supernode */
     n2n_register_super_ack=6,   /* ACK from supernode to edge */
     n2n_register_super_nak=7,   /* NAK from supernode to edge - registration refused */
-    n2n_federation=8            /* Not used by edge */
+    n2n_federation=8,           /* Not used by edge */
+    n2n_peer_info=9,            /* Send info on a peer from sn to edge */
+    n2n_query_peer=10           /* ask supernode for info on a peer */
 };
 
 typedef enum n2n_pc n2n_pc_t;
 
-#define N2N_FLAGS_LOCAL_SOCKET          0x0100
-#define N2N_FLAGS_OPTIONS               0x0080
-#define N2N_FLAGS_SOCKET                0x0040
+/* for the additional_flags present in some non-PACKET types */
+#define N2N_AFLAGS_LOCAL_SOCKET         0x0001
+
+/* for the common header section */
 #define N2N_FLAGS_FROM_SUPERNODE        0x0020
 
 /* The bits in flag that are the packet type */
@@ -64,6 +67,8 @@ typedef enum n2n_pc n2n_pc_t;
 #define IPV4_SIZE                       4
 #define IPV6_SIZE                       16
 
+#define ETH_FRAMEHDRSIZE                   14
+#define IP4_SRCOFFSET                   12
 
 #define N2N_AUTH_TOKEN_SIZE             32      /* bytes */
 
@@ -134,22 +139,30 @@ typedef struct n2n_REGISTER_ACK n2n_REGISTER_ACK_t;
 
 struct n2n_PACKET
 {
-    n2n_mac_t           srcMac;
-    n2n_mac_t           dstMac;
-    n2n_sock_t          sock;
-    n2n_sock_t          local_sock;     /* for behind-same-nat problem */
     n2n_transform_t     transform;
 };
 
 typedef struct n2n_PACKET n2n_PACKET_t;
 
+struct n2n_ETHFRAMEHDR
+{
+    n2n_mac_t           srcMac;
+    n2n_mac_t           dstMac;
+ /* uint16_t            ethertype; */ /* is there a reason to use this? */
+};
+
+typedef struct n2n_ETHFRAMEHDR n2n_ETHFRAMEHDR_t;
+
 
 /* Linked with n2n_register_super in n2n_pc_t. Only from edge to supernode. */
 struct n2n_REGISTER_SUPER
 {
+    uint16_t            aflags;         /* additional flags */
     n2n_cookie_t        cookie;         /* Link REGISTER_SUPER and REGISTER_SUPER_ACK */
+    uint16_t            timeout;
     n2n_mac_t           edgeMac;        /* MAC to register with edge sending socket */
     n2n_auth_t          auth;           /* Authentication scheme and tokens */
+    n2n_sock_t          local_sock;
 };
 
 typedef struct n2n_REGISTER_SUPER n2n_REGISTER_SUPER_t;
@@ -185,7 +198,23 @@ struct n2n_REGISTER_SUPER_NAK
 
 typedef struct n2n_REGISTER_SUPER_NAK n2n_REGISTER_SUPER_NAK_t;
 
+struct n2n_PEER_INFO
+{
+    uint16_t    aflags;
+    uint16_t    timeout;
+    n2n_mac_t   mac;
+    n2n_sock_t  sockets[2];
+};
 
+typedef struct n2n_PEER_INFO n2n_PEER_INFO_t;
+
+struct n2n_QUERY_PEER
+{
+    n2n_mac_t   srcMac;
+    n2n_mac_t   targetMac;
+};
+
+typedef struct n2n_QUERY_PEER n2n_QUERY_PEER_t;
 
 struct n2n_buf
 {
@@ -318,6 +347,34 @@ int decode_PACKET( n2n_PACKET_t * pkt,
                    const uint8_t * base,
                    size_t * rem,
                    size_t * idx );
+
+int encode_PEER_INFO( uint8_t * base, 
+                   size_t * idx,
+                   const n2n_common_t * common, 
+                   const n2n_PEER_INFO_t * pi );
+
+int decode_PEER_INFO( n2n_PEER_INFO_t * pi,
+                   const n2n_common_t * cmn, /* info on how to interpret it */
+                   const uint8_t * base,
+                   size_t * rem,
+                   size_t * idx );
+
+int encode_QUERY_PEER( uint8_t * base, 
+                   size_t * idx,
+                   const n2n_common_t * common, 
+                   const n2n_QUERY_PEER_t * qp );
+
+int decode_QUERY_PEER( n2n_QUERY_PEER_t * qp,
+                   const n2n_common_t * cmn, /* info on how to interpret it */
+                   const uint8_t * base,
+                   size_t * rem,
+                   size_t * idx );
+
+void decode_ETHFRAMEHDR( n2n_ETHFRAMEHDR_t * eth,
+                        const uint8_t * base );
+
+int copy_ETHFRAMEHDR( uint8_t * base,
+                      uint8_t * pkt);
 
 
 #endif /* #if !defined( N2N_WIRE_H_ ) */

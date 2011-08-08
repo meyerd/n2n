@@ -5,8 +5,9 @@
 #include "crypto.h"
 
 #define GCRYPT_NO_DEPRECATED
-#define KEY_SIZE 32
+#define KEY_SIZE 16
 #define IV_SIZE 12
+#define TAG_SIZE 16
 
 static int CRYPTO_INITIALIZED = 0;
 
@@ -65,7 +66,7 @@ void crypto_deinit(void)
 
 
 /* create a new encryption context with the session key */
-int aes_gcm_session_create(gnutls_datum_t *key, void *ctx)
+int aes_gcm_session_create(gnutls_datum_t *key, gnutls_cipher_hd_t **ctx)
 {
     if (!CRYPTO_INITIALIZED)
         return 1;
@@ -79,9 +80,9 @@ int aes_gcm_session_create(gnutls_datum_t *key, void *ctx)
     iv->size = 12;
 
     /* create encryption context */
-    gnutls_cipher_algorithm_t cipher = GNUTLS_CIPHER_AES_256_GCM;
-    ctx = (gnutls_cipher_hd_t *) gnutls_malloc(sizeof(gnutls_cipher_hd_t));
-    gt_err = gnutls_cipher_init(ctx, cipher, key, iv);
+    gnutls_cipher_algorithm_t cipher = GNUTLS_CIPHER_AES_128_GCM;
+    *ctx = (gnutls_cipher_hd_t *) gnutls_malloc(sizeof(gnutls_cipher_hd_t));
+    gt_err = gnutls_cipher_init(*ctx, cipher, key, iv);
     if (gt_err != GNUTLS_E_SUCCESS) {
         traceEvent(TRACE_ERROR, "gnutls error: cipher init");
         return gt_err;
@@ -91,24 +92,136 @@ int aes_gcm_session_create(gnutls_datum_t *key, void *ctx)
 
 
 /* free an encryption handle */
-void aes_gcm_session_destroy(gnutls_datum_t *key, void *ctx)
+void aes_gcm_session_destroy(gnutls_cipher_hd_t *ctx)
 {
-    /* overwrite key */
-    if (key != NULL) {
-        memset(key->data, 0, key->size);
-        gnutls_free(key->data);
-        gnutls_free(key);
-        key = NULL;
+    if (ctx) {
+        gnutls_cipher_deinit(*ctx);
+        traceEvent(TRACE_DEBUG, "AES session closed");
+    } else  {
+        traceEvent(TRACE_DEBUG, "no AES session to be closed");
     }
-    gnutls_cipher_deinit(ctx);
 }
 
 
-/* for testing purposes */
+/* for testing purposes TODO: remove */
 void *aes_gcm_dummy_key(void)
 {
     gnutls_datum_t *key = gnutls_malloc(sizeof(gnutls_datum_t));
     key->data = gnutls_malloc(KEY_SIZE);
     key->size = KEY_SIZE;
+    memset(key->data, 0, key->size);
     return key;
+}
+
+
+/* Authenticated encryption with authenticated data. Currently uses gnutls with
+ * nettle as crypto backend. Return negative error code or size of crypttext.
+ */
+int aes_gcm_authenc(gnutls_cipher_hd_t ctx, uint8_t *pt, size_t pt_len,
+        uint8_t *out, size_t out_len, uint8_t *ad, size_t ad_len)
+{
+    if (!CRYPTO_INITIALIZED)
+        return 1;
+    int gt_err;
+    uint8_t *ptr;
+    uint8_t iv[IV_SIZE];  //TODO generate & store actual IV
+
+    // TODO we might want to consider padding as in rfc5246 6.2.3.2
+    // TODO check output sizes against available space
+
+    /* set new IV */
+    gnutls_cipher_set_iv(ctx, iv, (size_t) IV_SIZE);
+    memcpy(out, iv, IV_SIZE);
+    ptr = out + IV_SIZE;
+
+    /* add associated data to be authenticated but not encrypted */
+    if (ad_len > 0) {
+        gt_err = gnutls_cipher_add_auth(ctx, ad, ad_len);
+        if (gt_err != GNUTLS_E_SUCCESS) {
+            traceEvent(TRACE_ERROR, "gnutls error: add auth data");
+            return gt_err;
+        }
+    }
+
+    /* encrypt plaintext */
+    if (pt_len > 0) {
+        gt_err = gnutls_cipher_encrypt2(ctx, pt, pt_len, ptr,
+                out_len - IV_SIZE);
+        if (gt_err != GNUTLS_E_SUCCESS) {
+            traceEvent(TRACE_ERROR, "gnutls error: encrypt");
+            return gt_err;
+        }
+        ptr += pt_len;
+    }
+
+    /* get integrity check vector */
+    uint8_t tag[TAG_SIZE];
+    gt_err = gnutls_cipher_tag(ctx, tag, TAG_SIZE);
+    if (gt_err != GNUTLS_E_SUCCESS) {
+        traceEvent(TRACE_ERROR, "gnutls error: authentication tag");
+        return gt_err;
+    }
+    memcpy(ptr, tag, TAG_SIZE);
+    ptr += TAG_SIZE;
+    return (int) (ptr - out);
+}
+
+
+/* Authenticated decryption with authenticated data. Will not return data
+ * if authentication failed. Return negative error code or size of plaintext.
+ */
+int aes_gcm_authdec(gnutls_cipher_hd_t ctx, uint8_t *in, size_t in_len, uint8_t
+        *out, size_t out_len, uint8_t *ad, size_t ad_len)
+{
+    if (!CRYPTO_INITIALIZED)
+        return 1;
+    int gt_err;
+    uint8_t *ptr;
+
+    // TODO we might want to consider padding as in rfc5246 6.2.3.2
+    // authenticate with padding of wrong lenght, else timing attack
+
+    /* abuse the pkcs #12 MAC error to signal failed authentication */
+    if (in_len < IV_SIZE + TAG_SIZE)
+        return GNUTLS_E_MAC_VERIFY_FAILED;
+
+    /* set new IV */
+    gnutls_cipher_set_iv(ctx, in, (size_t) IV_SIZE);
+    ptr = in + IV_SIZE;
+
+    /* add associated data to be authenticated */
+    if (ad_len > 0) {
+        gt_err = gnutls_cipher_add_auth(ctx, ad, ad_len);
+        if (gt_err != GNUTLS_E_SUCCESS) {
+            traceEvent(TRACE_ERROR, "gnutls error: add auth data");
+            return gt_err;
+        }
+    }
+
+    size_t pt_size = in_len - IV_SIZE - TAG_SIZE;  /* plaintext size */
+    if (in_len > 0) {
+        /* decrypt ciphertext */
+        gt_err = gnutls_cipher_decrypt2(ctx, ptr, pt_size, out,
+                out_len);
+        if (gt_err != GNUTLS_E_SUCCESS) {
+            traceEvent(TRACE_ERROR, "gnutls error: decrypt");
+            return gt_err;
+        }
+        ptr += pt_size;
+    }
+
+    /* get integrity check vector */
+    uint8_t tag[TAG_SIZE];
+    gt_err = gnutls_cipher_tag(ctx, tag, TAG_SIZE);
+    if (gt_err != GNUTLS_E_SUCCESS) {
+        traceEvent(TRACE_ERROR, "gnutls error: authentication tag");
+        return gt_err;
+    }
+    if (memcmp(ptr, tag, TAG_SIZE)) {
+        traceEvent(TRACE_WARNING, "gnutls error: packet auth failed");
+        /* make sure no information is returned */
+        memset(ptr - pt_size, 0, pt_size);
+        return GNUTLS_E_MAC_VERIFY_FAILED;
+    }
+    return (int) pt_size;
 }

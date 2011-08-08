@@ -86,7 +86,7 @@ int main( int argc, char * argv[] )
 
 static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c )
 {
-    n2n_mac_t destMac={0,1,2,3,4,5};
+    /* n2n_mac_t destMac={0,1,2,3,4,5}; */
     n2n_common_t cmn;
     n2n_PACKET_t pkt;
     size_t idx;
@@ -99,10 +99,6 @@ static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_com
     memcpy( cmn.community, c, N2N_COMMUNITY_SIZE );
 
     memset( &pkt, 0, sizeof(pkt) );
-    memcpy( pkt.srcMac, destMac, N2N_MAC_SIZE);
-    memcpy( pkt.dstMac, destMac, N2N_MAC_SIZE);
-
-    pkt.sock.family=0; /* do not encode sock */
 
     idx=0;
     encode_PACKET( pktbuf, &idx, &cmn, &pkt );
