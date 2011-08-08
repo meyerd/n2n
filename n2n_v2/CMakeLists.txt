@@ -1,6 +1,8 @@
 project(n2n)
 cmake_minimum_required(VERSION 2.6)
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindLibGcrypt.cmake)
+
 # N2n information
 set(N2N_VERSION 2.1.0)
 set(N2N_OSNAME ${CMAKE_SYSTEM})
@@ -58,6 +60,9 @@ endif(NOT WIN32)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/gnutls/include)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/gnutls/lib)
 
+# libgcrypt
+gcr_check(GCRYPT REQUIRED gcrypt)
+
 add_library(n2n n2n.c
                 n2n_keyfile.c
                 wire.c
@@ -79,6 +84,8 @@ add_subdirectory(win32)
 target_link_libraries(n2n n2n_win32)
 endif(DEFINED WIN32)
 
+target_link_libraries(n2n gnutls gcrypt)
+
 if(N2N_OPTION_AES)
 target_link_libraries(n2n crypto)
 endif(N2N_OPTION_AES)
@@ -89,7 +96,7 @@ target_link_libraries(n2n gnutls gcrypt)
 #target_link_libraries(n2n socket nsl)
 
 add_executable(edge edge.c)
-target_link_libraries(edge n2n)
+target_link_libraries(edge n2n gcrypt gnutls)
 
 add_executable(supernode sn.c)
 target_link_libraries(supernode n2n)

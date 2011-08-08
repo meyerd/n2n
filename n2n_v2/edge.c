@@ -483,6 +483,8 @@ static void edge_deinit(n2n_edge_t * eee)
     clear_hashed_peer_info_t_list( eee->known_peers );
     crypto_deinit();
 
+    crypto_deinit();
+
     (eee->transop[N2N_TRANSOP_TF_IDX].deinit)(&eee->transop[N2N_TRANSOP_TF_IDX]);
     (eee->transop[N2N_TRANSOP_NULL_IDX].deinit)(&eee->transop[N2N_TRANSOP_NULL_IDX]);
 }
@@ -2573,6 +2575,13 @@ int main(int argc, char* argv[])
     }
     /* else run in NULL mode */
 
+
+    /* set up crypto engine */
+    int err = crypto_init();
+    if (err) {
+        traceEvent(TRACE_ERROR, "Failed to initialize crypto engine: %d", err);
+        return -1;
+    }
 
     eee.udp_sock = open_socket(local_port, 1 /*bind ANY*/ );
     if(eee.udp_sock < 0)

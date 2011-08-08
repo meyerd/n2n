@@ -116,7 +116,6 @@ typedef struct ether_hdr ether_hdr_t;
 #endif /* #ifndef WIN32 */
 
 #include <string.h>
-
 #include <stdarg.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
