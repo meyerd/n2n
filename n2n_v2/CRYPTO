@@ -14,6 +14,7 @@ DH support in:
 - heimdal (not yet evaluated)
 - http://point-at-infinity.org/seccure/ (seems ok)
 - polarssl/tropicssl (seems simple)
+- gnupg/g10 secp384r1/P-384 (not accessible)
 
 
 Session key derivation
@@ -136,6 +137,9 @@ TODO
 
 The security is based on a shared secret key, which requires that all
 communicating parties trust each other.
+
+security level NSA Suite B 192 bit:
+ECDH P-384, AES GSM 256, SHA 384
 
 Not protecting against:
 - replay [TODO: consequences?; replay protection like dtls?]
