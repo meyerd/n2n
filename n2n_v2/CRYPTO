@@ -5,24 +5,41 @@ Key negotiation
 
 Diffie-Hellman secured with long term key
 see key mgmt recommendations
-Pub L = 15360, Priv N = 512
+Pub L = 15360, Priv N = 512 (256 bit level)
+to consider: rekeying support
+
+DH support in:
+- Gnutls has DH support, but only inside the TLS layer [dh algo?]
+- http://cr.yp.to/ecdh.html (ecc, seems good and simple, but not NSA Suite B)
+- heimdal (not yet evaluated)
+- http://point-at-infinity.org/seccure/ (seems ok)
+- polarssl/tropicssl (seems simple)
 
 
 Session key derivation
 ======================
 
-Maybe DH should derive 2 different keys for the nonce problem:
-http://tools.ietf.org/html/rfc5246 (TLS 1.2) Section 5
-	P_hash(secret, seed) = HMAC_hash(secret, A(1) + seed)
-	A(0) = seed
-	A(i) = HMAC_hash(secret, A(i-1))
-derived_key = hmac_sha256(key, hmac_sha256(key, seed) + seed)
+HMAC based key derivation function ("HKDF", RFC 5869) is specifically designed
+to derive symmetric keys from negotiated shared secrets as in Diffie-Hellman.
 
-to consider: choice of seed
+HKDF(salt, source_key, infostring, outlen) = K1 | K2 | ... | Kt
+    prk = HMAC(salt, source_key)  // (sic!)
+    K1 = HMAC(prk, infostring | 0x01)
+    K2 = HMAC(prk, K1 | infostring | 0x02)
+    K3 = HMAC(prk, K2 | infostring | 0x03) ...
+
+inputs: salt, source key material, infostring
+- salt will be a chosen random value of length 48B
+- soure key material: the DH shared secret, shall be at least 48B
+- infostring will be a n2n specific constant
+output: a session key
 
 
 IV choice
 =========
+
+The choice of the IV is of the utmost importance, since the security of GCM
+depends on NO IV being used MORE THAN ONCE with the same key.
 
 GCM in IPsec ESP (RFC 4106):
 4B salt: unpredictable but constant for SA lifetime
@@ -32,20 +49,25 @@ GCM in SSH (RFC 5647) [note: not implemented in openssh 5.8]:
 4B fixed
 8B invocation counter
 
+We choose an IV correspondingly, keep it secret until it is used and store it
+with the other security association information.
+
 
 Packet format
 =============
 
 We choose the encrypting and authenticating AES GCM mode for performance
-security. gcm 256 is not implemented in gnutls, so we use 128 bit.
+security. gcm 256 is not implemented in gnutls (but it is in nettle), so we use
+128 bit.
 
 to consider:
 - which fields to authenticate with GCM, but not encrypt (e.g. MAC addr)
 - pad authentication data / plain text to block size?
   [according to nettle spec this is not needed, we might do it anyway on the
    plain text to make statistical analysis more difficult]
+- security association explicit in packet?
 
-planned payload AES GCM 256 bit:
+planned payload AES GCM 128 bit:
 ?B crypto protocol version [authenticated]
 12B IV
 ---enc---
@@ -76,6 +98,36 @@ packet:
  A  2B transform ID
 	+  payload
 
+P2P:
+ 1B version
+ 1B ttl
+ 2B flags, packet type
+16B community
+ 2B transform
+14B Ethernet: 6B MAC + 6B MAC + 2B proto
+12B IV  [ENC START]
+20B IP
+    Payload  [ENC END]
+16B ICV
+
+new packet types:
+DATA
+SN_SYN
+SN_ACK
+EDGE_SYN
+EDGE_ACK
+EDGE_SYNACK
+EDGE_INFO
+
+A wants to contact B:
+B->All: DATA (ARP request - who is A)
+A->B: EDGE_INFO via sn (sockets l/r)
+A->B: DATA (via sn)
+B->A: EDGE_INFO via sn (sockets l/r)
+B->A: EDGE_SYN
+A->B: EDGE_SYN
+B->A: EDGE_ACK
+A->B: EDGE_SYNACK
 
 Security Analysis
 =================
@@ -112,6 +164,9 @@ http://csrc.nist.gov/publications/nistpubs/800-38D/SP-800-38D.pdf
 Cryptolounge GCM
 http://www.cryptolounge.org/wiki/GCM
 
+HMAC: Keyed-Hashing for Message Authentication
+http://tools.ietf.org/html/rfc2104
+
 The Use of Galois/Counter Mode (GCM) in IPsec Encapsulating Security Payload (ESP)
 http://tools.ietf.org/html/rfc4106
 
@@ -129,3 +184,10 @@ http://tools.ietf.org/html/rfc5246   Section 6.2.3.2
 
 AES Galois Counter Mode for the Secure Shell Transport Layer Protocol
 http://tools.ietf.org/html/rfc5647
+
+On Extract-then-Expand Key Derivation Functions and an HMAC-based KDF (HKDF)
+http://webee.technion.ac.il/~hugo/kdf/
+http://tools.ietf.org/html/rfc5869
+
+US Secure Hash Algorithms (SHA and SHA-based HMAC and HKDF)
+http://tools.ietf.org/html/rfc6234
