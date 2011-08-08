@@ -1,6 +1,8 @@
 project(n2n)
 cmake_minimum_required(VERSION 2.6)
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindLibGcrypt.cmake)
+
 # N2n information
 set(N2N_VERSION 2.1.0)
 set(N2N_OSNAME ${CMAKE_SYSTEM})
@@ -57,6 +59,9 @@ endif(NOT WIN32)
 # install gnutls >= 2.99.0 in your system path or here
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/gnutls/include)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/gnutls/lib)
+
+# libgcrypt
+gcr_check(GCRYPT REQUIRED gcrypt)
 
 add_library(n2n n2n.c
                 n2n_keyfile.c
