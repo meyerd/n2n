@@ -1,4 +1,5 @@
 N2Nv3 Protocol Specification
+----------------------------
 
 There are 4 different packet-types in N2Nv3:
 - PKT_SN
@@ -22,7 +23,37 @@ PKT_EDGE is used for direkt edge-to-edge communication. Purposes are:
 PKT_DATA is used for transferring data (edge-to-edge only)
 
 
-FORMATS
+Procedure
+---------
+
+1. Joining the Network
+
+Joining the Network is done by a 4-way handshake with the supernode. The first
+two packets are used for a DH Exchange, the second two to exchange information.
+
+A -> S: version, community, AS_cryptID, DH (IV + g + p + A + salt + HMAC)
+S -> A: versoin, community, SA_cryptID, DH (IV + B + salt + HMAC)
+A -> S: SA_cryptID, crypt(A_MAC + A_N2N_IP + A_LOCAL_SOCK)
+S -> A: AS_cryptID, crypt(A_PUB_SOCK)
+
+2. Establishing connection to another edge
+
+A -> S: AS_cryptID, crypt(timeout, B_MAC, A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK)
+S -> B: SB_cryptID, crypt(timeout, B_MAC, A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK)
+B -> A: dummy holepunch packet (will usually get lost)
+B -> S: BS_cryptID, crypt(timeout, A_MAC, B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK)
+S -> A: SA_cryptID, crypt(timeout, A_MAC, B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK)
+
+A -> B: version, community, AB_cryptID, DH (IV + g + p + A + salt + HMAC)
+B -> A: version, community, BA_cryptID, DH (IV + B + salt + HMAC)
+A -> B: BA_cryptID, crypt(ACK) (??)
+
+3. Data packets:
+
+A -> B: AB_cryptID, crypt(DATA)
+
+
+FORMATS (work in progress)
 -------
 
 The packet type is always the first byte for any of the packets:
@@ -145,7 +176,7 @@ PKT_DATA:
 
       0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
      +---------------+---------------+---------------+---------------+
-   0 ! PktType       ! source MAC                                    :
+   0 ! PktType       ! source MAC / 2                                :
      +---------------+---------------+---------------+---------------+
    4 : ... source MAC                                ! dest. MAC ... :
      +---------------+---------------+---------------+---------------+
