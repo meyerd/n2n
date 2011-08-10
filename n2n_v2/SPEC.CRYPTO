@@ -24,7 +24,8 @@ SPI is the security parameter index, a nonce chosen by sender to identify the
 (unidirectional) security association.
 
      len
-[A]    _  protocol header
+       4  ZERO
+[A]    4  header
        ?  HMAC_IV
 [A]    4  SPI
 [A]    ?  ECDH ephemeral public key
@@ -46,7 +47,8 @@ SPI is the security parameter index, a nonce chosen by sender to identify the
 (unidirectional) security association.
 
      len
-[A]    _  protocol header
+       4  ZERO
+[A]    4  header
        ?  HMAC_IV
 [A]    4  SPI
 [A]    4  SPI_A
@@ -77,7 +79,6 @@ key is used for the authenticating and encrypting cipher AEAD, which can also
 authenticate (but not encrypt) additional data.
 
      len
-[A]    _  protocol header
        4  SPI
       12  AEAD_IV
 [AE]   _  payload
