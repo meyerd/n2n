@@ -1,0 +1,92 @@
+general remarks
+===============
+
+Not yet specified:
+- replay protection
+- rekeying
+
+Authenticated fields will be tagged [A], encrypted fields with [E]. Payload
+data must never be sent unauthenticated or unencrypted.
+User supplied data must never be sent to the supernode, with the exception of
+an optionally specified local socket.
+
+Lengths are noted in octets, unless specified otherwise. "_" denotes a variable
+length, which may be zero. "?" means not yet specified.
+
+A description of allowed packet formats follows.
+
+
+
+handshake syn
+=============
+
+SPI is the security parameter index, a nonce chosen by sender to identify the
+(unidirectional) security association.
+
+     len
+[A]    _  protocol header
+       ?  HMAC_IV
+[A]    4  SPI
+[A]    ?  ECDH ephemeral public key
+[A]   48  KDF_SALT
+      48  HMAC
+
+The SPI is chosen by the sender as a nonce and used as future SA identifier for
+this direction.
+The KDF_SALT is a chosen random value used to salt the key derivation.
+HMAC values will be computed using the symmetric master key or a key derived
+from it.
+
+
+
+handshake syn-ack
+=================
+
+SPI is the security parameter index, a nonce chosen by sender to identify the
+(unidirectional) security association.
+
+     len
+[A]    _  protocol header
+       ?  HMAC_IV
+[A]    4  SPI
+[A]    4  SPI_A
+[A]    ?  ECDH ephemeral public key
+[A]   48  KDF_SALT
+      48  HMAC
+
+The SPI is chosen by the sender as a nonce.
+The KDF_SALT is a chosen random value.
+SPI_A is SPI of the protocol initiating party. It is used to identify this
+reply.
+
+Because session keys are unidirectional, the SPI and KDF_SALT must be chosen
+randomly by each party.
+
+after the handshake:
+Both parties compute the session keys using the ephpemeral public keys, the key
+derivation function and the KDF_SALT. These session keys form the security
+associations (SA) identified by the SPI.
+
+
+
+payload packet
+==============
+
+A session key must be established beforehand by performing a handshake. This
+key is used for the authenticating and encrypting cipher AEAD, which can also
+authenticate (but not encrypt) additional data.
+
+     len
+[A]    _  protocol header
+       4  SPI
+      12  AEAD_IV
+[AE]   _  payload
+      16  AEAD_ICV
+
+The SPI is constant for the life time of the negotiated session key.
+The AEAD_IV values must be chosen according to the specification found in
+CRYPTO. They must be stored with the SA.
+
+Note that in contrast to the rest of the header, the IV and SPI need not be
+authenticated since authentication will fail, if either of them are
+manipulated.
