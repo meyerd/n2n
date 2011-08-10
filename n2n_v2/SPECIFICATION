@@ -50,7 +50,7 @@ B -> S: BS_cryptID, crypt(timeout, A_MAC, B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK)
 S -> A: SA_cryptID, crypt(timeout, A_MAC, B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK)
 
 A -> B: version, community, AB_cryptID, DH (IV + g + p + A + salt + HMAC)
-B -> A: version, community, BA_cryptID, DH (IV + B + salt + HMAC)
+B -> A: version, community, AB_cryptID, BA_cryptID, DH (IV + B + salt + HMAC)
 A -> B: BA_cryptID, crypt(ACK) (??)
 
 4. Resume established connections
