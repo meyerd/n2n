@@ -1,20 +1,21 @@
 general remarks
 ===============
 
-Not yet specified:
-- replay protection
-- rekeying
+Not yet specified, but very important:
+- replay protection MUST be addressed [see end of file]
 
 Authenticated fields will be tagged [A], encrypted fields with [E]. Payload
 data must never be sent unauthenticated or unencrypted.
 User supplied data must never be sent to the supernode, with the exception of
-an optionally specified local socket.
+network address like data such as the community name or IP and MAC addresses
+in use by edge.
 
 Lengths are noted in octets, unless specified otherwise. "_" denotes a variable
 length, which may be zero. "?" means not yet specified.
 
 A description of allowed packet formats follows.
 
+Other cryptographic protocol considerations will be discussed afterwards.
 
 
 handshake syn
@@ -26,17 +27,18 @@ SPI is the security parameter index, a nonce chosen by sender to identify the
      len
        4  ZERO
 [A]    4  header
-       ?  HMAC_IV
+[A]    8  community name hash
 [A]    4  SPI
 [A]    ?  ECDH ephemeral public key
 [A]   48  KDF_SALT
+       ?  HMAC_IV
       48  HMAC
 
 The SPI is chosen by the sender as a nonce and used as future SA identifier for
 this direction.
 The KDF_SALT is a chosen random value used to salt the key derivation.
-HMAC values will be computed using the symmetric master key or a key derived
-from it.
+HMAC values will be computed using the corresponding symmetric master key or a
+key derived from it.
 
 
 
@@ -49,11 +51,12 @@ SPI is the security parameter index, a nonce chosen by sender to identify the
      len
        4  ZERO
 [A]    4  header
-       ?  HMAC_IV
+[A]    4  community name hash
 [A]    4  SPI
 [A]    4  SPI_A
 [A]    ?  ECDH ephemeral public key
 [A]   48  KDF_SALT
+       ?  HMAC_IV
       48  HMAC
 
 The SPI is chosen by the sender as a nonce.
@@ -91,3 +94,40 @@ CRYPTO. They must be stored with the SA.
 Note that in contrast to the rest of the header, the IV and SPI need not be
 authenticated since authentication will fail, if either of them are
 manipulated.
+
+AEAD_ICV is the integrity check vector that authenticates the encrypted and
+additionally authenticated data.
+
+
+
+other goals
+===========
+Rekeying:
+No explicit rekeying is supported. A new session (and thereby a new session key
+must be established every 24 hours, plus a random interval to avoid
+simultaneous session establishment. New keys are generated every time a
+connection timed out and is reestablished.
+Any rekeying whatsoever must be protected effectively with the symmetric master
+secret key (i.e. not a session key).
+
+Traffic flow confidentiality:
+Resistance against statistical analysis is difficult. For very limited
+protection we could easily adopt a max. 255 Byte padding. Inside the encrypted
+payload a TFC protocol header could direct sophisticated TFC mechanisms in the
+future.
+
+!! DoS of supernode:
+The short handshake makes the usual DoS protections against e.g. replay attacks
+not feasable. This might warrant further study.
+
+!! !! Replay protection:
+The encrypted channel with the supernode MUST be protected against replay
+attacks. Other channels could be protected as well (mostly relevant for UDP
+traffic).
+
+
+
+further research to do
+======================
+- Define the protection goals for the community name.
+- hole punch packet type and security implications
