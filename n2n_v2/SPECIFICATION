@@ -5,13 +5,7 @@
 Procedure
 ---------
 
-Note: The following flags are used:
-
-KA   keep alive
-ACK  acknowledge
-AR   address resolution
-CO   connect
-R    resume
+Note: For details on the SN_HEADER see FORMATS section
 
 1. Joining the Network
 
@@ -20,26 +14,30 @@ two packets are used for a DH Exchange, the second two to exchange information.
 
 A -> S: handshake syn
 S -> A: handshake syn-ack
-A -> S: packet: FLAGS, A_MAC, A_N2N_IP, A_LOCAL_SOCK
-S -> A: packet: FLAGS, A_PUB_SOCK
+A -> S: packet: SN_HEADER(supernode_register:),    A_MAC, A_N2N_IP, A_LOCAL_SOCK
+S -> A: packet: SN_HEADER(supernode_register:ACK), A_PUB_SOCK
 
 2. Supernode keep-alive
 
-A -> S: packet: FLAGS(KA)
-S -> A: packet: FLAGS(KA+ACK)
+A -> S: packet: SN_HEADER(keep_alive:)
+S -> A: packet: SN_HEADER(keep_alive:ACK)
 
 3. ARP requests
 
-A -> S: packet: FLAGS(AR),     B_IP
-S -> A: packet: FLAGS(AR+ACK), B_IP, B_MAC
+A -> S: packet: SN_HEADER(address_resolution:),    B_IP
+S -> A: packet: SN_HEADER(address_resolution:ACK), B_IP, B_MAC
 
 4. Establishing p2p connection to another edge
 
-A -> S: packet: FLAGS(CO), B_MAC, A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
-S -> B: packet: FLAGS(CO), B_MAC, A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
-B -> A: dummy holepunch packet (will usually get lost)
-B -> S: packet: FLAGS(CO+ACK), A_MAC, B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK
-S -> A: packet: FLAGS(CO+ACK), A_MAC, B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK
+A -> S: packet: SN_HEADER(edge_connect:), B_MAC,
+                A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
+S -> B: packet: SN_HEADER(edge_connect:), B_MAC,
+                A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
+B -> A: holepunch packet (will usually get lost)
+B -> S: packet: SN_HEADER(edge_connect:ACK), A_MAC,
+                B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK
+S -> A: packet: SN_HEADER(edge_connect:ACK), A_MAC,
+                B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK
 
 A -> B: handshake syn
 B -> A: handshake syn-ack
@@ -47,9 +45,11 @@ B -> A: handshake syn-ack
 
 5. Resume established connections with timeout for p2p hole
 
-A -> S: packet: FLAGS(R), B_MAC, A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
-S -> B: packet: FLAGS(R), B_MAC, A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
-B -> A: dummy holepunch packet
+A -> S: packet: SN_HEADER(edge_resume:), B_MAC,
+                A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
+S -> B: packet: SN_HEADER(edge_resume:), B_MAC,
+                A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
+B -> A: holepunch packet
 (alternatively use end-to-end key here?)
 
 6. Data packets:
@@ -71,7 +71,7 @@ SPI != NULL:
   find peer P associated with SPI
   check (throw away if bad) & decrypt payload to PL
   if SPI == supernode:
-    decode FLAGS
+    decode SN_HEADER
     ... (TODO)
   if SPI != SUPERNODE:
     assemble ethernet frame
@@ -85,29 +85,41 @@ SPI == NULL:
 SPI != NULL:
   find peer P associated with SPI
   check (throw away if bad) & decrypt payload to PL
-  decode FLAGS
+  decode SN_HEADER
   ... (TODO)
 
 FORMATS (work in progress)
 -------
 
-The packet type is always the first byte for any of the packets:
+HEADER:
 
-      0 1 2 3 4 5 6 7 
-     +---------------+
-   0 ! PktType       !
-     +---------------+
-
-PKT_SN:
-
-when PktType = PKT_SN, the first 4 byte will always be link this:
+The header is sent for all non-payload packets after 4 ZERO-bytes
 
       0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
      +---------------+---------------+---------------+---------------+
-   0 ! PktType       ! Version       ! Crypt-Version ! SN_Flags      !
+   0 ! Version       ! Crypt-Version ! Packet Type   ! Flags         !
      +---------------+---------------+---------------+---------------+
 
-What follows is dependent on the SN_Flags
+Packet Types: handshake, holepunch
+Flags: ACK (acknowledge)
+
+SN_HEADER:
+
+the SN header is sent for all payload packets going to or coming from the
+supernode
+
+      0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+     +---------------+---------------+---------------+---------------+
+   0 ! Version       ! Crypt-Version ! Packet Type   ! Flags         !
+     +---------------+---------------+---------------+---------------+
+
+Packet Types: supernode_register, keep_alive, address_resolution,
+	      edge_connect, edge_resume
+Flags: ACK (acknowledge)
+
+
+
+--------------------
 
 SN_Flag = DH_INIT
 
