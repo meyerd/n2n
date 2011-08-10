@@ -70,6 +70,7 @@ SPI == NULL:
   ... (TODO)
 SPI != NULL:
   find peer P associated with SPI
+      else discard
   check (throw away if bad) & decrypt payload to PL
   if SPI == supernode:
     decode SN_HEADER
@@ -85,6 +86,7 @@ SPI == NULL:
   ... (TODO)
 SPI != NULL:
   find peer P associated with SPI
+      else discard
   check (throw away if bad) & decrypt payload to PL
   decode SN_HEADER
   ... (TODO)
