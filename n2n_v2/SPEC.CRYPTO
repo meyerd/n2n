@@ -51,7 +51,6 @@ SPI is the security parameter index, a nonce chosen by sender to identify the
      len
        4  ZERO
 [A]    4  header
-[A]    4  community name hash
 [A]    4  SPI
 [A]    4  SPI_A
 [A]    ?  ECDH ephemeral public key
