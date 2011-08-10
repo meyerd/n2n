@@ -67,7 +67,20 @@ Edge:
 1. Read first four byte to Integer SPI
 SPI == NULL:
   Parse header, check version
-  ... (TODO)
+  switch(packet type)
+    handshake syn:
+      community name check ?
+      HMAC check
+      allocate new peer, save SPI
+      DH
+      send handshake syn-ack
+    handshake syn-ack:
+      HMAC check
+      find_peer_by_spi (else: discard)
+      DH (generate key)
+    holepunch packet:
+      discard
+      
 SPI != NULL:
   find peer P associated with SPI
   check (throw away if bad) & decrypt payload to PL
