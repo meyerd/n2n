@@ -14,30 +14,31 @@ two packets are used for a DH Exchange, the second two to exchange information.
 
 A -> S: handshake syn
 S -> A: handshake syn-ack
-A -> S: packet: SN_HEADER(supernode_register:),    A_MAC, A_N2N_IP, A_LOCAL_SOCK
-S -> A: packet: SN_HEADER(supernode_register:ACK), A_PUB_SOCK
+A -> S: payload packet: SN_HEADER(supernode_register:),
+                        A_MAC,A_N2N_IP, A_LOCAL_SOCK
+S -> A: payload packet: SN_HEADER(supernode_register:ACK), A_PUB_SOCK
 
 2. Supernode keep-alive
 
-A -> S: packet: SN_HEADER(keep_alive:)
-S -> A: packet: SN_HEADER(keep_alive:ACK)
+A -> S: payload packet: SN_HEADER(keep_alive:)
+S -> A: payload packet: SN_HEADER(keep_alive:ACK)
 
 3. ARP requests
 
-A -> S: packet: SN_HEADER(address_resolution:),    B_IP
-S -> A: packet: SN_HEADER(address_resolution:ACK), B_IP, B_MAC
+A -> S: payload packet: SN_HEADER(address_resolution:),    B_IP
+S -> A: payload packet: SN_HEADER(address_resolution:ACK), B_IP, B_MAC
 
 4. Establishing p2p connection to another edge
 
-A -> S: packet: SN_HEADER(edge_connect:), B_MAC,
-                A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
-S -> B: packet: SN_HEADER(edge_connect:), B_MAC,
-                A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
+A -> S: payload packet: SN_HEADER(edge_connect:), B_MAC,
+                        A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
+S -> B: payload packet: SN_HEADER(edge_connect:), B_MAC,
+                        A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
 B -> A: holepunch packet (will usually get lost)
-B -> S: packet: SN_HEADER(edge_connect:ACK), A_MAC,
-                B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK
-S -> A: packet: SN_HEADER(edge_connect:ACK), A_MAC,
-                B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK
+B -> S: payload packet: SN_HEADER(edge_connect:ACK), A_MAC,
+                        B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK
+S -> A: payload packet: SN_HEADER(edge_connect:ACK), A_MAC,
+                        B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK
 
 A -> B: handshake syn
 B -> A: handshake syn-ack
@@ -45,16 +46,16 @@ B -> A: handshake syn-ack
 
 5. Resume established connections with timeout for p2p hole
 
-A -> S: packet: SN_HEADER(edge_resume:), B_MAC,
+A -> S: payload packet: SN_HEADER(edge_resume:), B_MAC,
                 A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
-S -> B: packet: SN_HEADER(edge_resume:), B_MAC,
+S -> B: payload packet: SN_HEADER(edge_resume:), B_MAC,
                 A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
 B -> A: holepunch packet
 (alternatively use end-to-end key here?)
 
 6. Data packets:
 
-A -> B: packet: DATA
+A -> B: payload packet: DATA
 
 7. Rekeying:
 ?
