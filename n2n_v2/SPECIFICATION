@@ -48,11 +48,11 @@ S -> A: AS_cryptID, crypt(B_MAC)
 
 4. Establishing p2p connection to another edge
 
-A -> S: AS_cryptID, crypt(timeout, B_MAC, A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK)
-S -> B: SB_cryptID, crypt(timeout, B_MAC, A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK)
+A -> S: AS_cryptID, crypt(B_MAC, A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK)
+S -> B: SB_cryptID, crypt(B_MAC, A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK)
 B -> A: dummy holepunch packet (will usually get lost)
-B -> S: BS_cryptID, crypt(timeout, A_MAC, B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK)
-S -> A: SA_cryptID, crypt(timeout, A_MAC, B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK)
+B -> S: BS_cryptID, crypt(A_MAC, B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK)
+S -> A: SA_cryptID, crypt(A_MAC, B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK)
 
 A -> B: version, community, AB_cryptID, DH (IV + g + p + A + salt + HMAC)
 B -> A: version, community, AB_cryptID, BA_cryptID, DH (IV + B + salt + HMAC)
@@ -60,8 +60,8 @@ A -> B: BA_cryptID, crypt(ACK) (??)
 
 5. Resume established connections
 
-A -> S: AS_cryptID, crypt(timeout, B_MAC, A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK)
-S -> B: SB_cryptID, crypt(timeout, B_MAC, A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK)
+A -> S: AS_cryptID, crypt(B_MAC, A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK)
+S -> B: SB_cryptID, crypt(B_MAC, A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK)
 B -> A: dummy holepunch packet
 
 (alternatively use end-to-end key here??)
