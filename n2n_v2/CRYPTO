@@ -1,5 +1,8 @@
 crypto protocol v0.0.1
 
+Does gcrypt free() zeroize?
+Replay: Nonces?
+
 Key negotiation
 ===============
 
@@ -34,6 +37,9 @@ inputs: salt, source key material, infostring
 - soure key material: the DH shared secret, shall be at least 48B
 - infostring will be a n2n specific constant
 output: a session key
+
+Note:
+Maybe we should use the "concatenation key derivation function" instead.
 
 
 IV choice
@@ -78,57 +84,6 @@ planned payload AES GCM 128 bit:
 -enc end-
 16B ICV
 
-old packet format:
-common:
-	1B  version
-	1B  ttl
-	2B  flags
-	+   pc (packet type)
-	16B community
-packet:
- A  6B  src mac
- A  6B  dst mac
-	if FLAGS_SOCKET:
-		2B  socket flags
-		2B  dest UDP port
-		4B [16B IP6] dest IP4 addr
-	if FLAGS_LOCAL_SOCKET:
-		2B  socket flags
-		2B  dest UDP port
-		4B [16B IP6] dest IP4 addr
- A  2B transform ID
-	+  payload
-
-P2P:
- 1B version
- 1B ttl
- 2B flags, packet type
-16B community
- 2B transform
-14B Ethernet: 6B MAC + 6B MAC + 2B proto
-12B IV  [ENC START]
-20B IP
-    Payload  [ENC END]
-16B ICV
-
-new packet types:
-DATA
-SN_SYN
-SN_ACK
-EDGE_SYN
-EDGE_ACK
-EDGE_SYNACK
-EDGE_INFO
-
-A wants to contact B:
-B->All: DATA (ARP request - who is A)
-A->B: EDGE_INFO via sn (sockets l/r)
-A->B: DATA (via sn)
-B->A: EDGE_INFO via sn (sockets l/r)
-B->A: EDGE_SYN
-A->B: EDGE_SYN
-B->A: EDGE_ACK
-A->B: EDGE_SYNACK
 
 Security Analysis
 =================
