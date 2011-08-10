@@ -91,21 +91,4 @@ Once the IPv6 addresses are configured and edge started, IPv6 neighbor discovery
 packets flow (get broadcast) and IPv6 entities self arrange. Test your IPv6
 setup with ping6 - the IPv6 ping command.
 
-
-Performance Notes
------------------
-
-The time taken to perform a ping test for various ciphers is given below:
-
-Test: ping -f -l 8 -s 800 -c 10000 <far_edge>
-
-AES  (-O0) 11820
-TF   (-O0) 25761
-
-TF   (-O2) 20554
-
-AES  (-O3) 12532
-TF   (-O3) 14046
-NULL (-O3) 10659
-
 (C) 2007-2010 - Luca Deri <deri@ntop.org>, Richard Andrews <andrews@ntop.org>
