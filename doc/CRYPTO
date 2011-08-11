@@ -2,6 +2,7 @@ crypto protocol v0.0.1
 
 Does gcrypt free() zeroize?
 Replay: Nonces?
+play through attacks
 
 Key negotiation
 ===============

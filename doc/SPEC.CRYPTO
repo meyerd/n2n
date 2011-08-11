@@ -67,7 +67,7 @@ Because session keys are unidirectional, the SPI and KDF_SALT must be chosen
 randomly by each party.
 
 after the handshake:
-Both parties compute the session keys using the ephpemeral public keys, the key
+Both parties compute the session keys using the ephemeral public keys, the key
 derivation function and the KDF_SALT. These session keys form the security
 associations (SA) identified by the SPI.
 
@@ -99,8 +99,18 @@ additionally authenticated data.
 
 
 
+hole punch packet
+=================
+
+not yet specified. TODO
+
+     len
+       ?  TODO
+
+
 other goals
 ===========
+
 Rekeying:
 No explicit rekeying is supported. A new session (and thereby a new session key
 must be established every 24 hours, plus a random interval to avoid
@@ -112,15 +122,20 @@ secret key (i.e. not a session key).
 Traffic flow confidentiality:
 Resistance against statistical analysis is difficult. For very limited
 protection we could easily adopt a max. 255 Byte padding. Inside the encrypted
-payload a TFC protocol header could direct sophisticated TFC mechanisms in the
+payload a TFC protocol header could direct sophisticated TFC algorithms in the
 future.
+
+community name:
+The community name will be hashed statically. Although it will not be visible
+in plain text, user documentation must say that it will not be considered and
+treated as confidential.
 
 !! DoS of supernode:
 The short handshake makes the usual DoS protections against e.g. replay attacks
-not feasable. This might warrant further study.
+not feasable. This warrants further study.
 
-!! !! Replay protection:
-The encrypted channel with the supernode MUST be protected against replay
+!! Replay protection:
+The encrypted channel with the supernode must be protected against replay
 attacks. Other channels could be protected as well (mostly relevant for UDP
 traffic).
 
@@ -128,5 +143,4 @@ traffic).
 
 further research to do
 ======================
-- Define the protection goals for the community name.
 - hole punch packet type and security implications
