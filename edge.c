@@ -2340,12 +2340,6 @@ int main(int argc, char* argv[])
             help();
     }
 
-    int c_err = crypto_init();
-    if (c_err) {
-        traceEvent(TRACE_WARNING, "Encryption engine failed: %d", c_err);
-        return -1;
-    }
-
     if ((NULL == encrypt_key) && (0 == strlen(eee.keyschedule))) {
         traceEvent(TRACE_WARNING, "Encryption is disabled in edge.");
 
