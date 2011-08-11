@@ -1,6 +1,6 @@
 /*
-	(C) 2007 - Luca Deri <deri@ntop.org>
-*/
+ (C) 2007 - Luca Deri <deri@ntop.org>
+ */
 
 #ifndef _WINTAP_H_
 #define _WINTAP_H_
@@ -12,8 +12,6 @@
 #include <ws2tcpip.h>
 #include <stdio.h>
 #include <string.h>
-
-
 
 //===============================================
 // This file is included both by OpenVPN and
