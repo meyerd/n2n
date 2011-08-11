@@ -58,7 +58,6 @@
 #if !defined( N2N_KEYFILE_H_ )
 #define N2N_KEYFILE_H_
 
-
 #include "n2n_wire.h"
 #include <time.h>
 
@@ -68,34 +67,29 @@
 #define N2N_KEYFILE_LINESIZE    256
 
 /** This structure stores an encryption cipher spec. */
-struct n2n_cipherspec
-{
-    n2n_transform_t     t;                      /* N2N_TRANSFORM_ID_xxx for this spec. */
-    time_t              valid_from;             /* Start using the key at this time. */
-    time_t              valid_until;            /* Key is valid if time < valid_until. */
-    uint16_t            opaque_size;            /* Size in bytes of key. */
-    uint8_t             opaque[N2N_MAX_KEYSIZE];/* Key matter. */
+struct n2n_cipherspec {
+    n2n_transform_t t; /* N2N_TRANSFORM_ID_xxx for this spec. */
+    time_t valid_from; /* Start using the key at this time. */
+    time_t valid_until; /* Key is valid if time < valid_until. */
+    uint16_t opaque_size; /* Size in bytes of key. */
+    uint8_t opaque[N2N_MAX_KEYSIZE]; /* Key matter. */
 };
 
 typedef struct n2n_cipherspec n2n_cipherspec_t;
 
-
-static const char * const DELIMITERS=" \t\n\r";
-
+static const char * const DELIMITERS = " \t\n\r";
 
 /** @return number of cipherspec items filled. */
-int     n2n_read_keyfile( n2n_cipherspec_t * specs,     /* fill out this array of cipherspecs */
-                          size_t numspecs,              /* number of slots in the array. */
-                          const char * ctrlfile_path ); /* path to control file */
+int n2n_read_keyfile(n2n_cipherspec_t * specs, /* fill out this array of cipherspecs */
+size_t numspecs, /* number of slots in the array. */
+const char * ctrlfile_path); /* path to control file */
 
-int     validCipherSpec( const n2n_cipherspec_t * k,
-                         time_t now );
+int validCipherSpec(const n2n_cipherspec_t * k, time_t now);
 
-ssize_t  n2n_parse_hex( uint8_t * keyBuf, 
-                        size_t keyMax, 
-                        const char * textKey,
-                        size_t textLen );
+ssize_t n2n_parse_hex(uint8_t * keyBuf, size_t keyMax, const char * textKey,
+        size_t textLen);
 
 /*----------------------------------------------------------------------------*/
 
 #endif /* #if !defined( N2N_KEYFILE_H_ ) */
+
