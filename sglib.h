@@ -1,5 +1,4 @@
 /* 
-
   This is SGLIB version 1.0.3
 
   (C) by Marian Vittek, Bratislava, http://www.xref-tech.com/sglib, 2003-5
@@ -10,9 +9,6 @@
   Software license or under terms of GNU Public License.  If you need
   to use a derivative form in a commercial project, or you need sglib
   under any other license conditions, contact the author.
-
-
-
 */
 
 

@@ -25,21 +25,20 @@
 #define _N2N_H_
 
 /*
-   tunctl -t tun0
-   tunctl -t tun1
-   ifconfig tun0 1.2.3.4 up
-   ifconfig tun1 1.2.3.5 up
-   ./edge -d tun0 -l 2000 -r 127.0.0.1:3000 -c hello
-   ./edge -d tun1 -l 3000 -r 127.0.0.1:2000 -c hello
+ tunctl -t tun0
+ tunctl -t tun1
+ ifconfig tun0 1.2.3.4 up
+ ifconfig tun1 1.2.3.5 up
+ ./edge -d tun0 -l 2000 -r 127.0.0.1:3000 -c hello
+ ./edge -d tun1 -l 3000 -r 127.0.0.1:2000 -c hello
 
 
-   tunctl -u UID -t tunX
-*/
+ tunctl -u UID -t tunX
+ */
 
 #if defined(__APPLE__) && defined(__MACH__)
 #define _DARWIN_
 #endif
-
 
 /* Some capability defaults which can be reset for particular platforms. */
 #define N2N_HAVE_DAEMON 1
@@ -90,12 +89,11 @@
 #include <sys/wait.h>
 
 #define ETH_ADDR_LEN 6
-struct ether_hdr
-{
-    uint8_t  dhost[ETH_ADDR_LEN];
-    uint8_t  shost[ETH_ADDR_LEN];
-    uint16_t type;                /* higher layer protocol encapsulated */
-} __attribute__ ((__packed__));
+struct ether_hdr {
+    uint8_t dhost[ETH_ADDR_LEN];
+    uint8_t shost[ETH_ADDR_LEN];
+    uint16_t type; /* higher layer protocol encapsulated */
+}__attribute__ ((__packed__));
 
 typedef struct ether_hdr ether_hdr_t;
 
@@ -133,11 +131,11 @@ typedef struct ether_hdr ether_hdr_t;
 #define N2N_IFNAMSIZ            16 /* 15 chars * NULL */
 #ifndef WIN32
 typedef struct tuntap_dev {
-  int           fd;
-  uint8_t       mac_addr[6];
-  uint32_t      ip_addr, device_mask;
-  uint16_t      mtu;
-  char          dev_name[N2N_IFNAMSIZ];
+    int fd;
+    uint8_t mac_addr[6];
+    uint32_t ip_addr, device_mask;
+    uint16_t mtu;
+    char dev_name[N2N_IFNAMSIZ];
 } tuntap_dev;
 
 #define SOCKET int
@@ -183,23 +181,22 @@ typedef char ipstr_t[32];
 typedef char macstr_t[N2N_MACSTR_SIZE];
 
 struct peer_info {
-    struct peer_info *  next;
-    n2n_community_t     community_name;
-    n2n_mac_t           mac_addr;
-    n2n_sock_t          sock;
-    int                 num_sockets;
-    n2n_sock_t *        sockets;
-    time_t              last_seen;
-    time_t              last_sent_query;
-    size_t              timeout;
-    gnutls_cipher_hd_t  *aes_gcm_tx_ctx;
-    gnutls_cipher_hd_t  *aes_gcm_rx_ctx;
+    struct peer_info * next;
+    n2n_community_t community_name;
+    n2n_mac_t mac_addr;
+    n2n_sock_t sock;
+    int num_sockets;
+    n2n_sock_t * sockets;
+    time_t last_seen;
+    time_t last_sent_query;
+    size_t timeout;
+    gnutls_cipher_hd_t *aes_gcm_tx_ctx;
+    gnutls_cipher_hd_t *aes_gcm_rx_ctx;
 };
 typedef struct peer_info peer_info_t;
 
 /* sglib hash table defines */
 #define PEER_HASH_TAB_SIZE 53 // prime number
-
 /* #define PEER_INFO_COMPARATOR(e1, e2)    (\
 	for(int i = 0; i < N2N_MAC_SIZE; i++) {\
 		int8_t tmp = (e1)->mac_addr[i] - (e2)->mac_addr[i]; \
@@ -208,18 +205,19 @@ typedef struct peer_info peer_info_t;
 	} \
 	return 0; \
 })
-*/
+ */
 
 #define PEER_INFO_COMPARATOR(e1, e2) (strncmp((const char*)(e1)->mac_addr, (const char*)(e2)->mac_addr, sizeof(n2n_mac_t)))
 
 unsigned int peer_info_t_hash_function(peer_info_t *e);
 
 SGLIB_DEFINE_LIST_PROTOTYPES(peer_info_t, PEER_INFO_COMPARATOR, next)
-SGLIB_DEFINE_HASHED_CONTAINER_PROTOTYPES(peer_info_t, PEER_HASH_TAB_SIZE, peer_info_t_hash_function)
+SGLIB_DEFINE_HASHED_CONTAINER_PROTOTYPES(peer_info_t, PEER_HASH_TAB_SIZE,
+        peer_info_t_hash_function)
 
-struct n2n_edge; /* defined in edge.c */
-typedef struct n2n_edge         n2n_edge_t;
-
+struct n2n_edge;
+/* defined in edge.c */
+typedef struct n2n_edge n2n_edge_t;
 
 /* ************************************** */
 
@@ -255,10 +253,10 @@ extern const uint8_t multicast_addr[6];
 
 /* Functions */
 extern void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...);
-extern int  tuntap_open(tuntap_dev *device, char *dev, const char *address_mode, char *device_ip, 
-			char *device_mask, const char * device_mac, int mtu);
-extern int  tuntap_read(struct tuntap_dev *tuntap, unsigned char *buf, int len);
-extern int  tuntap_write(struct tuntap_dev *tuntap, unsigned char *buf, int len);
+extern int tuntap_open(tuntap_dev *device, char *dev, const char *address_mode,
+        char *device_ip, char *device_mask, const char * device_mac, int mtu);
+extern int tuntap_read(struct tuntap_dev *tuntap, unsigned char *buf, int len);
+extern int tuntap_write(struct tuntap_dev *tuntap, unsigned char *buf, int len);
 extern void tuntap_close(struct tuntap_dev *tuntap);
 extern void tuntap_get_address(struct tuntap_dev *tuntap);
 
@@ -266,12 +264,10 @@ extern SOCKET open_socket(int local_port, int bind_any);
 
 extern char* intoa(uint32_t addr, char* buf, uint16_t buf_len);
 extern char* macaddr_str(macstr_t buf, const n2n_mac_t mac);
-extern int   str2mac( uint8_t * outmac /* 6 bytes */, const char * s );
-extern char * sock_to_cstr( n2n_sock_str_t out,
-                            const n2n_sock_t * sock );
+extern int str2mac(uint8_t * outmac /* 6 bytes */, const char * s);
+extern char * sock_to_cstr(n2n_sock_str_t out, const n2n_sock_t * sock);
 
-extern int sock_equal( const n2n_sock_t * a, 
-                       const n2n_sock_t * b );
+extern int sock_equal(const n2n_sock_t * a, const n2n_sock_t * b);
 
 extern uint8_t is_multi_broadcast(const uint8_t * dest_mac);
 extern char* msg_type2str(uint16_t msg_type);
@@ -279,22 +275,19 @@ extern void hexdump(const uint8_t * buf, size_t len);
 
 void print_n2n_version();
 
-
 /* Operations on peer_info lists. */
-struct peer_info * find_peer_by_mac( peer_info_t ** list,
-                                     const n2n_mac_t mac );
-void   peer_list_add( struct peer_info * * list,
-                      struct peer_info * new );
-size_t peer_list_size( const struct peer_info * list );
-void dealloc_peer( peer_info_t* peer );
+struct peer_info * find_peer_by_mac(peer_info_t ** list, const n2n_mac_t mac);
+void peer_list_add(struct peer_info * * list, struct peer_info * new);
+size_t peer_list_size(const struct peer_info * list);
+void dealloc_peer(peer_info_t* peer);
 size_t hashed_peer_list_t_size(peer_info_t** htab);
-size_t purge_with_function(struct peer_info ** peer_list, size_t(*purger)(struct peer_info ** peer_list, time_t purge_before));
-size_t purge_peer_list( struct peer_info ** peer_list, 
-                        time_t purge_before );
+size_t purge_with_function(struct peer_info ** peer_list,
+        size_t(*purger)(struct peer_info ** peer_list, time_t purge_before));
+size_t purge_peer_list(struct peer_info ** peer_list, time_t purge_before);
 size_t purge_hashed_peer_list_t(peer_info_t ** peer_list, time_t purge_before);
-size_t clear_peer_list( struct peer_info ** peer_list );
+size_t clear_peer_list(struct peer_info ** peer_list);
 size_t clear_hashed_peer_info_t_list(peer_info_t ** peer_list);
-size_t purge_expired_registrations( struct peer_info ** peer_list );
+size_t purge_expired_registrations(struct peer_info ** peer_list);
 size_t hashed_purge_expired_registrations(struct peer_info ** peer_list);
 
 /* version.c */
