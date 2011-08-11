@@ -4,7 +4,7 @@ CMakeFiles/
 cmake_install.cmake
 benchmark
 benchmark_hashtable
-doc/
+man/
 edge
 gnutls/
 libn2n.a
