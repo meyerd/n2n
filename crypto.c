@@ -57,14 +57,12 @@ int crypto_init(void)
     return 0;
 }
 
-
 /* free gnutls structures */
 void crypto_deinit(void)
 {
     CRYPTO_INITIALIZED = 0;
     gnutls_global_deinit();
 }
-
 
 /* derive a session key from the shared secret 'ss' as source_key and the salt
  * using a HMAC based key derivation function (RFC 5869):
@@ -80,12 +78,14 @@ static int derive_key(const void **salt, size_t saltlen, const void **ss,
     if (!CRYPTO_INITIALIZED)
         return 1;
     /* salt and ss should have a length of at least the digest size */
-    if (saltlen < DERIV_HMAC_SIZE || sslen < DERIV_HMAC_SIZE)
+    if (saltlen < DERIV_HMAC_SIZE || sslen < DERIV_HMAC_SIZE
+        )
         return 2;
     /* currently not supported, but could be done by completely implementing
      * rfc 5869
      */
-    if (derivedlen > DERIV_HMAC_SIZE)
+    if (derivedlen > DERIV_HMAC_SIZE
+        )
         return 3;
 
     int gt_err;
@@ -97,20 +97,20 @@ static int derive_key(const void **salt, size_t saltlen, const void **ss,
 
     uint8_t *prk;
     uint8_t *okm;
-    prk = gnutls_malloc(DERIV_HMAC_SIZE);  // pseudorandom key
-    okm = gnutls_malloc(DERIV_HMAC_SIZE);  // output key material
+    prk = gnutls_malloc(DERIV_HMAC_SIZE); // pseudorandom key
+    okm = gnutls_malloc(DERIV_HMAC_SIZE); // output key material
     derived = gnutls_malloc(derivedlen);
 
     /* the salt is used as the key, the shared secret is used as data */
-    gt_err = gnutls_hmac_fast(GNUTLS_MAC_SHA384, *salt, saltlen,
-            *ss, sslen, prk);
+    gt_err = gnutls_hmac_fast(GNUTLS_MAC_SHA384, *salt, saltlen, *ss, sslen,
+            prk);
     if (gt_err != GNUTLS_E_SUCCESS) {
         traceEvent(TRACE_ERROR, "gnutls error: key derivation");
         return gt_err;
     }
 
-    gt_err = gnutls_hmac_fast(GNUTLS_MAC_SHA384, prk, DERIV_HMAC_SIZE,
-            data, datalen, okm);
+    gt_err = gnutls_hmac_fast(GNUTLS_MAC_SHA384, prk, DERIV_HMAC_SIZE, data,
+            datalen, okm);
     if (gt_err != GNUTLS_E_SUCCESS) {
         traceEvent(TRACE_ERROR, "gnutls error: key derivation");
         return gt_err;
@@ -121,7 +121,6 @@ static int derive_key(const void **salt, size_t saltlen, const void **ss,
     gnutls_free(okm);
     return 0;
 }
-
 
 /* create a new encryption context with the session key */
 int aes_gcm_session_create(gnutls_datum_t *key, gnutls_cipher_hd_t **ctx)
@@ -148,18 +147,16 @@ int aes_gcm_session_create(gnutls_datum_t *key, gnutls_cipher_hd_t **ctx)
     return 0;
 }
 
-
 /* free an encryption handle */
 void aes_gcm_session_destroy(gnutls_cipher_hd_t *ctx)
 {
     if (ctx) {
         gnutls_cipher_deinit(*ctx);
         traceEvent(TRACE_DEBUG, "AES session closed");
-    } else  {
+    } else {
         traceEvent(TRACE_DEBUG, "no AES session to be closed");
     }
 }
-
 
 /* for testing purposes TODO: remove */
 void *aes_gcm_dummy_key(void)
@@ -171,7 +168,6 @@ void *aes_gcm_dummy_key(void)
     return key;
 }
 
-
 /* Authenticated encryption with authenticated data. Currently uses gnutls with
  * nettle as crypto backend. Return negative error code or size of crypttext.
  */
@@ -182,7 +178,7 @@ int aes_gcm_authenc(gnutls_cipher_hd_t ctx, uint8_t *pt, size_t pt_len,
         return 1;
     int gt_err;
     uint8_t *ptr;
-    uint8_t iv[AEAD_IV_SIZE];  //TODO generate & store actual IV
+    uint8_t iv[AEAD_IV_SIZE]; //TODO generate & store actual IV
     memset(iv, 0x15, AEAD_IV_SIZE);
 
     // TODO we might want to consider padding as in rfc5246 6.2.3.2
@@ -226,12 +222,11 @@ int aes_gcm_authenc(gnutls_cipher_hd_t ctx, uint8_t *pt, size_t pt_len,
     return (int) (ptr - out);
 }
 
-
 /* Authenticated decryption with authenticated data. Will not return data
  * if authentication failed. Return negative error code or size of plaintext.
  */
-int aes_gcm_authdec(gnutls_cipher_hd_t ctx, uint8_t *in, size_t in_len, uint8_t
-        *out, size_t out_len, uint8_t *ad, size_t ad_len)
+int aes_gcm_authdec(gnutls_cipher_hd_t ctx, uint8_t *in, size_t in_len,
+        uint8_t *out, size_t out_len, uint8_t *ad, size_t ad_len)
 {
     if (!CRYPTO_INITIALIZED)
         return 1;
@@ -244,7 +239,8 @@ int aes_gcm_authdec(gnutls_cipher_hd_t ctx, uint8_t *in, size_t in_len, uint8_t
     // authenticate with padding of wrong lenght, else timing attack
 
     /* abuse the pkcs #12 MAC error to signal failed authentication */
-    if (in_len < AEAD_IV_SIZE + AEAD_TAG_SIZE)
+    if (in_len < AEAD_IV_SIZE + AEAD_TAG_SIZE
+        )
         return GNUTLS_E_MAC_VERIFY_FAILED;
 
     /* set new IV */
@@ -260,11 +256,10 @@ int aes_gcm_authdec(gnutls_cipher_hd_t ctx, uint8_t *in, size_t in_len, uint8_t
         }
     }
 
-    size_t pt_size = in_len - AEAD_IV_SIZE - AEAD_TAG_SIZE;  /* plaintext size */
+    size_t pt_size = in_len - AEAD_IV_SIZE - AEAD_TAG_SIZE; /* plaintext size */
     if (in_len > 0) {
         /* decrypt ciphertext */
-        gt_err = gnutls_cipher_decrypt2(ctx, ptr, pt_size, out,
-                out_len);
+        gt_err = gnutls_cipher_decrypt2(ctx, ptr, pt_size, out, out_len);
         if (gt_err != GNUTLS_E_SUCCESS) {
             traceEvent(TRACE_ERROR, "gnutls error: decrypt");
             return gt_err;

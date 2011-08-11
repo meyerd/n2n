@@ -10,15 +10,16 @@
 #include <stdio.h>
 
 int main(int argc, char** argv) {
-	peer_info_t* testpeers[PEER_HASH_TAB_SIZE];
-	struct sglib_hashed_peer_info_t_iterator it;
-	peer_info_t *ll;
+    peer_info_t* testpeers[PEER_HASH_TAB_SIZE];
+    struct sglib_hashed_peer_info_t_iterator it;
+    peer_info_t *ll;
 
-	sglib_hashed_peer_info_t_init(testpeers);
-		
-	for(ll=sglib_hashed_peer_info_t_it_init(&it, testpeers); ll!=NULL; ll=sglib_hashed_peer_info_t_it_next(&it)) {
-		sglib_hashed_peer_info_t_delete(testpeers, ll);
-		free(ll);
-	}
-	return 0;
+    sglib_hashed_peer_info_t_init(testpeers);
+
+    for (ll = sglib_hashed_peer_info_t_it_init(&it, testpeers); ll != NULL; ll =
+            sglib_hashed_peer_info_t_it_next(&it)) {
+        sglib_hashed_peer_info_t_delete(testpeers, ll);
+        free(ll);
+    }
+    return 0;
 }

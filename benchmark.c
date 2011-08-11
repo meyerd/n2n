@@ -9,28 +9,37 @@
 #include <string.h>
 #include <stdio.h>
 
-uint8_t PKT_CONTENT[]={
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 };
+uint8_t PKT_CONTENT[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5,
+        6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+        11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+        15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4,
+        5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+        11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+        15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4,
+        5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+        11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+        15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4,
+        5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+        11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+        15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4,
+        5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+        11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+        15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4,
+        5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+        11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+        15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4,
+        5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+        11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+        15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4,
+        5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+        11, 12, 13, 14, 15 };
 
 /* Prototypes */
-static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c );
+static ssize_t do_encode_packet(uint8_t * pktbuf, size_t bufsize,
+        const n2n_community_t c);
 
-int main( int argc, char * argv[] )
+int main(int argc, char * argv[])
 {
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     n2n_trans_op_t transop_null;
@@ -49,60 +58,60 @@ int main( int argc, char * argv[] )
     ssize_t nw;
     unsigned long int tdiff;
 
-    transop_null_init( &transop_null );
-    memset(c,0,sizeof(N2N_COMMUNITY_SIZE));
+    transop_null_init(&transop_null);
+    memset(c, 0, sizeof(N2N_COMMUNITY_SIZE));
 
-    n=10000;
-    memcpy( c, "abc123def456", 12 );
+    n = 10000;
+    memcpy(c, "abc123def456", 12);
 
-    gettimeofday( &t1, NULL );
-    for(i=0; i<n; ++i)
-    {
-        nw = do_encode_packet( pktbuf, N2N_PKT_BUF_SIZE, c);
+    gettimeofday(&t1, NULL);
+    for (i = 0; i < n; ++i) {
+        nw = do_encode_packet(pktbuf, N2N_PKT_BUF_SIZE, c);
 
-        nw += transop_null.fwd( &transop_null,
-            pktbuf+nw, N2N_PKT_BUF_SIZE-nw,
-            PKT_CONTENT, sizeof(PKT_CONTENT) );
+        nw += transop_null.fwd(&transop_null, pktbuf + nw,
+                N2N_PKT_BUF_SIZE - nw, PKT_CONTENT, sizeof(PKT_CONTENT));
 
-        idx=0;
-        rem=nw;
+        idx = 0;
+        rem = nw;
 
-        decode_common( &cmn, pktbuf, &rem, &idx);
-        decode_PACKET( &pkt, &cmn, pktbuf, &rem, &idx );
+        decode_common(&cmn, pktbuf, &rem, &idx);
+        decode_PACKET(&pkt, &cmn, pktbuf, &rem, &idx);
 
-        if ( 0 == (i%1000) )
-        {
-            fprintf(stderr,".");
+        if (0 == (i % 1000)) {
+            fprintf(stderr, ".");
         }
     }
-    gettimeofday( &t2, NULL );
+    gettimeofday(&t2, NULL);
 
     tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
 
-    fprintf( stderr, "\nrun %lu times. (%lu -> %lu nsec each) %u.%06u -> %u.%06u.\n", i, tdiff, (tdiff *1000)/i, (uint32_t)t1.tv_sec, (uint32_t)t1.tv_usec, (uint32_t)t2.tv_sec, (uint32_t)t2.tv_usec );
+    fprintf(stderr,
+            "\nrun %lu times. (%lu -> %lu nsec each) %u.%06u -> %u.%06u.\n", i,
+            tdiff, (tdiff * 1000) / i, (uint32_t) t1.tv_sec,
+            (uint32_t) t1.tv_usec, (uint32_t) t2.tv_sec, (uint32_t) t2.tv_usec);
 
     return 0;
 }
 
-static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c )
+static ssize_t do_encode_packet(uint8_t * pktbuf, size_t bufsize,
+        const n2n_community_t c)
 {
     /* n2n_mac_t destMac={0,1,2,3,4,5}; */
     n2n_common_t cmn;
     n2n_PACKET_t pkt;
     size_t idx;
 
-
-    memset( &cmn, 0, sizeof(cmn) );
+    memset(&cmn, 0, sizeof(cmn));
     cmn.ttl = N2N_DEFAULT_TTL;
     cmn.pc = n2n_packet;
-    cmn.flags=0; /* no options, not from supernode, no socket */
-    memcpy( cmn.community, c, N2N_COMMUNITY_SIZE );
+    cmn.flags = 0; /* no options, not from supernode, no socket */
+    memcpy(cmn.community, c, N2N_COMMUNITY_SIZE);
 
-    memset( &pkt, 0, sizeof(pkt) );
+    memset(&pkt, 0, sizeof(pkt));
 
-    idx=0;
-    encode_PACKET( pktbuf, &idx, &cmn, &pkt );
-    traceEvent( TRACE_DEBUG, "encoded PACKET header of size=%u", (unsigned int)idx );
-    
+    idx = 0;
+    encode_PACKET(pktbuf, &idx, &cmn, &pkt);
+    traceEvent(TRACE_DEBUG, "encoded PACKET header of size=%u", (unsigned int)idx);
+
     return idx;
 }
