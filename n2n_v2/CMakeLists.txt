@@ -135,7 +135,7 @@ add_custom_command(OUTPUT ${PROJECT_BINARY_DIR}/man/n2n_v2.7.gz
                    DEPENDS ${PROJECT_SOURCE_DIR}/n2n_v2.7
                   )
 
-add_custom_target(doc DEPENDS ${PROJECT_BINARY_DIR}/man/edge.8.gz
+add_custom_target(man DEPENDS ${PROJECT_BINARY_DIR}/man/edge.8.gz
                               ${PROJECT_BINARY_DIR}/man/supernode.1.gz
                               ${PROJECT_BINARY_DIR}/man/n2n_v2.7.gz
                  )
