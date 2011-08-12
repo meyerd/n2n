@@ -50,7 +50,7 @@ unsigned int peer_info_t_hash_function(peer_info_t *e)
      *    is taken into account
      */
     for (; i < N2N_MAC_SIZE / 2; i++) {
-        tmp |= (e->mac_addr[i] ^ e->mac_addr[(N2N_MAC_SIZE / 2) + 1])
+        tmp |= (e->mac_addr[i] ^ e->mac_addr[(N2N_MAC_SIZE / 2) + i])
                 << (N2N_MAC_SIZE / 2 - 1 - i);
     }
     return tmp;
