@@ -27,8 +27,8 @@ pre-handshake
 [A]    8  community
 [A]    4  SPI (Destination)
 [A]    4  SPI (Source)
-       ?  HMAC_IV
-      48  HMAC
+      48  HMAC_SALT
+      24  HMAC_TAG
 
 SPI (Source) is chosen by the sender. The sender expects the receiver to use
 the SPI (Source) value as identifier for all future packets. If the
@@ -50,14 +50,14 @@ SPI is the security parameter index, a nonce chosen by sender to identify the
 [A]    4  header
 [A]    4  SPI
 [A]    ?  ECDH ephemeral public key
-[A]   48  KDF_SALT
-       ?  HMAC_IV
-      48  HMAC
+[A]   48  AEAD_KDF_SALT
+      48  HMAC_KDF_SALT
+      24  HMAC_TAG
 
 The SPI is the target expects for packets is already known at this point.
 The KDF_SALT is a chosen random value used to salt the key derivation.
-HMAC values will be computed using the corresponding symmetric master key or a
-key derived from it.
+HMAC values will be computed using a key derived from the corresponding
+symmetric master key.
 
 Because session keys are unidirectional, KDF_SALT must be chosen randomly by
 each party.
@@ -82,9 +82,9 @@ SPI is the security parameter index, a nonce chosen by sender to identify the
 [A]    4  header
 [A]    4  SPI
 [A]    ?  ECDH ephemeral public key
-[A]   48  KDF_SALT
-       ?  HMAC_IV
-      48  HMAC
+[A]   48  AEAD_KDF_SALT
+      48  HMAC_KDF_SALT
+      24  HMAC_TAG
 
 
 

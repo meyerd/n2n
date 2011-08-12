@@ -4,14 +4,27 @@ Does gcrypt free() zeroize?
 Replay: Nonces?
 play through attacks
 
+
+HMAC for handshake packets
+==========================
+
+Derive key with NIST concat KDF from master key with:
+otherInfo = AlgoID || sender_SPI || receiver_SPI || MAC_SALT
+sharedSecret = symmetric master key
+
+The authentication tag will be truncated to 24 bytes (RFC 2104, 4868).
+
+The MAC_SALT as supplementary public information will be arbitrarily chosen
+as a random value 48 bytes length.
+
+
 Key negotiation
 ===============
 
+ECDH. Look for implementations.
+
 Diffie-Hellman secured with long term key
 see key mgmt recommendations
-Pub L = 15360, Priv N = 512 (256 bit level)
-to consider: rekeying support
-
 DH support in:
 - Gnutls has DH support, but only inside the TLS layer [dh algo?]
 - http://cr.yp.to/ecdh.html (ecc, seems good and simple, but not NSA Suite B)
@@ -24,6 +37,12 @@ DH support in:
 Session key derivation
 ======================
 
+NIST concatenation KDF (demanded for Suite B):
+OtherInfo = AlgorithmID || PartyUInfo || PartyVInfo {|| SuppPubInfo }{|| SuppPrivInfo }
+Compute Hash_i = H(counter || sharedSecret || OtherInfo).
+DerivedKeyingMaterial = Hash_1 || Hash_2 || ...
+
+This well designed KDF could be used instead:
 HMAC based key derivation function ("HKDF", RFC 5869) is specifically designed
 to derive symmetric keys from negotiated shared secrets as in Diffie-Hellman.
 
@@ -39,9 +58,6 @@ inputs: salt, source key material, infostring
 - infostring will be a n2n specific constant
 output: a session key
 
-Note:
-Maybe we should use the "concatenation key derivation function" instead.
-
 
 IV choice
 =========
@@ -52,10 +68,6 @@ depends on NO IV being used MORE THAN ONCE with the same key.
 GCM in IPsec ESP (RFC 4106):
 4B salt: unpredictable but constant for SA lifetime
 8B IV:   LFSR or counter [garantee uniqueness]
-
-GCM in SSH (RFC 5647) [note: not implemented in openssh 5.8]:
-4B fixed
-8B invocation counter
 
 We choose an IV correspondingly, keep it secret until it is used and store it
 with the other security association information.
