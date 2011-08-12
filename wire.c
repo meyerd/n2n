@@ -418,6 +418,32 @@ int decode_PACKET(n2n_PACKET_t * pkt, const n2n_common_t * cmn, /* info on how t
     return retval;
 }
 
+int encode_HEADER(uint8_t * base, size_t * idx, const n2n_HEADER_t *hdr)
+{
+    encode_uint8(base, idx, N2N_MAJOR_VERSION);
+    encode_uint8(base, idx, N2N_MINOR_VERSION);
+    encode_uint8(base, idx, hdr->packet_type);
+    encode_uint8(base, idx, hdr->flags);
+    return 0;
+}
+
+int decode_HEADER(n2n_HEADER_t * hdr, const uint8_t * base,
+        size_t * rem, size_t * idx)
+{
+    uint8_t tmp;
+    decode_uint8(&tmp, base, rem, idx);
+    if (tmp != N2N_MAJOR_VERSION)
+        return -1;
+    decode_uint8(&tmp, base, rem, idx);
+    if (tmp != N2N_MINOR_VERSION)
+        return -1;
+    decode_uint8(&hdr->packet_type, base, rem, idx);
+    decode_uint8(&hdr->flags, base, rem, idx);
+
+    return 0;
+}
+
+
 void decode_ETHFRAMEHDR(n2n_ETHFRAMEHDR_t * eth, const uint8_t * base)
 {
     memcpy(eth->dstMac, base, N2N_MAC_SIZE);

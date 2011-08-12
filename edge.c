@@ -955,17 +955,35 @@ static void update_peer_address(n2n_edge_t * eee, uint8_t from_supernode,
 static int initial_supernode_registration(n2n_edge_t *eee) {
     socklen_t sender_socklen;
     struct sockaddr_in sender_sock;
-    uint8_t udp_buf[N2N_PKT_BUF_SIZE]; /* Compete UDP packet */
-    ssize_t recvlen;
+    uint8_t udp_buf[N2N_PKT_BUF_SIZE];
+    size_t trans_len;
     struct timeval wait_time;
     fd_set socket_mask;
     int rc, tries, phase, next_phase;
+    uint32_t spi_self, spi_remote;
+    n2n_HEADER_t hdr;
+
+    spi_self = 0xAFFEEFFA; /* generate randomly */
+    spi_remote = 0xAFFEEFFA; /* only for key gen */
 
     for (phase = 0; phase < 3; phase++) {
         next_phase = 0;
         for (tries = 0; tries < MAX_SUPERNODE_TRIES; tries++) {
+            trans_len = 0;
             switch(phase) {
             case 0:
+                /* build_packet */
+                /* Zero first 4 bytes */
+                memset(udp_buf, 0, 4);
+                trans_len += 4;
+                /* Build HEADER */
+                /*hdr.packet_type = n2n_pre_handshake;*/
+                hdr.flags = 0x0;
+                encode_HEADER(udp_buf, &trans_len, &hdr);
+
+                /* call to crypto engine: complete packet with HMAC_IV and HMAC */
+
+                sendto_sock(eee->udp_sock, udp_buf, trans_len, &eee->supernode);
                 /* send supernode pre-handshake */
                 break;
             case 1:
@@ -986,9 +1004,9 @@ static int initial_supernode_registration(n2n_edge_t *eee) {
             rc = select(eee->udp_sock + 1, &socket_mask, NULL, NULL, &wait_time);
             if (rc > 0) {
                 sender_socklen = sizeof(sender_sock);
-                recvlen = recvfrom(eee->udp_sock, udp_buf, N2N_PKT_BUF_SIZE, 0,
-                                   (struct sockaddr *) &sender_sock,
-                                   (socklen_t*) &sender_socklen);
+                trans_len = recvfrom(eee->udp_sock, udp_buf, N2N_PKT_BUF_SIZE,
+                        0, (struct sockaddr *) &sender_sock,
+                        (socklen_t*) &sender_socklen);
 
                 switch(phase) {
                 case 0:

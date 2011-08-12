@@ -24,6 +24,8 @@
 #endif /* #if defined(WIN32) */
 
 #define N2N_PKT_VERSION                 2
+#define N2N_MAJOR_VERSION               3
+#define N2N_MINOR_VERSION               0
 #define N2N_DEFAULT_TTL                 2       /* can be forwarded twice at most */
 #define N2N_COMMUNITY_SIZE              16
 #define N2N_MAC_SIZE                    6
@@ -31,9 +33,10 @@
 #define N2N_PKT_BUF_SIZE                2048
 #define N2N_SOCKBUF_SIZE                64      /* string representation of INET or INET6 sockets */
 
-typedef uint8_t n2n_community_t[N2N_COMMUNITY_SIZE];
-typedef uint8_t n2n_mac_t[N2N_MAC_SIZE];
-typedef uint8_t n2n_cookie_t[N2N_COOKIE_SIZE];
+typedef uint8_t  n2n_community_t[N2N_COMMUNITY_SIZE];
+typedef uint8_t  n2n_mac_t[N2N_MAC_SIZE];
+typedef uint8_t  n2n_cookie_t[N2N_COOKIE_SIZE];
+typedef uint32_t n2n_spi_t;
 
 typedef char n2n_sock_str_t[N2N_SOCKBUF_SIZE]; /* tracing string buffer */
 
@@ -98,6 +101,12 @@ struct n2n_auth {
 };
 
 typedef struct n2n_auth n2n_auth_t;
+
+struct n2n_preauth {
+    n2n_community_t community;
+    n2n_spi_t spi_dest;
+    n2n_spi_t spi_src;
+};
 
 struct n2n_common {
     /* int                 version; */
@@ -196,6 +205,13 @@ struct n2n_QUERY_PEER {
 
 typedef struct n2n_QUERY_PEER n2n_QUERY_PEER_t;
 
+struct n2n_HEADER {
+    uint8_t packet_type;
+    uint8_t flags;
+};
+
+typedef struct n2n_HEADER n2n_HEADER_t;
+
 struct n2n_buf {
     uint8_t * data;
     size_t size;
@@ -283,6 +299,10 @@ int encode_QUERY_PEER(uint8_t * base, size_t * idx, const n2n_common_t * common,
 
 int decode_QUERY_PEER(n2n_QUERY_PEER_t * qp, const n2n_common_t * cmn, /* info on how to interpret it */
 const uint8_t * base, size_t * rem, size_t * idx);
+
+int encode_HEADER(uint8_t * base, size_t * idx, const n2n_HEADER_t *hdr);
+int decode_HEADER(n2n_HEADER_t *hdr, const uint8_t * base,
+        size_t * rem, size_t* idx);
 
 void decode_ETHFRAMEHDR(n2n_ETHFRAMEHDR_t * eth, const uint8_t * base);
 
