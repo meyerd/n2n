@@ -17,6 +17,8 @@ The authentication tag will be truncated to 24 bytes (RFC 2104, 4868).
 The MAC_SALT as supplementary public information will be arbitrarily chosen
 as a random value 48 bytes length.
 
+TODO: Should we really truncate the MAC tag?
+
 
 Key negotiation
 ===============
@@ -41,6 +43,8 @@ NIST concatenation KDF (demanded for Suite B):
 OtherInfo = AlgorithmID || PartyUInfo || PartyVInfo {|| SuppPubInfo }{|| SuppPrivInfo }
 Compute Hash_i = H(counter || sharedSecret || OtherInfo).
 DerivedKeyingMaterial = Hash_1 || Hash_2 || ...
+
+TODO: Should the master key really go into the KDF of the session key?
 
 This well designed KDF could be used instead:
 HMAC based key derivation function ("HKDF", RFC 5869) is specifically designed

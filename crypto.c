@@ -65,11 +65,27 @@ void crypto_deinit(void)
     gnutls_global_deinit();
 }
 
+//TODO use rfc kdf for hmac key?
+//TODO look at ipsec, tls: how do they use their secret keymat/mastersecret
+//values?
+/* usage for AES session keys:
+ * derive_key(*dh_ss, dh_sslen, *from_spi, *to_spi, *salt_a, saltlen,
+ *         "N2N edge AES-GCM 256 session key", algoidlen,
+ *         *masterkey, masterkeylen, **sesskey_a, 32)
+ *   TODO should we really use the master key here?
+ *
+ * usage for HMAC authentication keys:
+ * derive_key(*masterkey, masterkeylen, *from_spi, *to_spi, *salt_a, saltlen,
+ *         "N2N HMAC-SHA384 authentication key", algoidlen,
+ *         NULL, 0, **hmackey_a, 48)
+ */
 /* NIST concatenation key derivation function as in NIST SP 800-56A */
-static int derive_key(const void **ss, size_t sslen, uint32_t *from_spi,
-        uint32_t *to_spi, const void **salt, size_t saltlen,
-        const void *masterkey, size_t masterkeylen, void **derived,
-        size_t derivedlen)
+static int derive_key(const void *ss, size_t sslen,
+        uint32_t *from_spi, uint32_t *to_spi,
+        const void *salt, size_t saltlen,
+        const char *algoid, size_t algoidlen,
+        const void *other_ss, size_t other_sslen,
+        void **derived, size_t derivedlen)
 {
     if (!CRYPTO_INITIALIZED)
         return 1;
@@ -79,7 +95,7 @@ static int derive_key(const void **ss, size_t sslen, uint32_t *from_spi,
     /* currently not supported, but could be done by completely implementing
      * the kdf
      */
-    if (derivedlen != AEAD_KEY_SIZE)
+    if (derivedlen > DERIV_HASH_SIZE)
         return 3;
 
     uint8_t *input;  // the text input buffer to the hash function
@@ -87,13 +103,11 @@ static int derive_key(const void **ss, size_t sslen, uint32_t *from_spi,
     size_t ptr = 0;
     uint32_t counter = 1;
     size_t counterlen = sizeof(uint32_t);
-    char algoid[] = "N2N edge AES-GCM 256 session key";
-    int algoidlen = 32;
     size_t spilen = sizeof(uint32_t);
     int gt_err;
 
     size_t inputlen = counterlen + sslen;
-    inputlen += algoidlen + (2 * spilen) + saltlen + masterkeylen;
+    inputlen += algoidlen + (2 * spilen) + saltlen + other_sslen;
 
     input = gnutls_malloc(inputlen);
 
@@ -101,20 +115,19 @@ static int derive_key(const void **ss, size_t sslen, uint32_t *from_spi,
     counter = htonl(counter);  // must be big endian
     memcpy(input + ptr, &counter, counterlen);
     ptr += counterlen;
-    memcpy(input + ptr, *ss, sslen);
+    memcpy(input + ptr, ss, sslen);
     ptr += sslen;
 
-    /* otherinfo = algoid || partyu || partyv || supppubinfo || supprivinfo */
+    /* otherinfo = algoid || partyu || partyv || suppubinfo || supprivinfo */
     memcpy(input + ptr, algoid, algoidlen);
     ptr += algoidlen;
     memcpy(input + ptr, from_spi, spilen);
     ptr += spilen;
     memcpy(input + ptr, to_spi, spilen);
     ptr += spilen;
-    memcpy(input + ptr, *salt, saltlen);
+    memcpy(input + ptr, salt, saltlen);
     ptr += saltlen;
-    //TODO should we really use the master key here?
-    memcpy(input + ptr, masterkey, masterkeylen);
+    memcpy(input + ptr, other_ss, other_sslen);
 
     keymat = gnutls_malloc(DERIV_HASH_SIZE);
     gt_err = gnutls_hash_fast(GNUTLS_DIG_SHA384, input, inputlen, keymat);
@@ -189,7 +202,9 @@ static int derive_key_rfc5869(const void **salt, size_t saltlen,
 }
 
 //TODO make sure this is dealloc'd correctly
-/* Generate a random number in secure memory. Use this for SPI generation */
+/* Generate a random number in secure memory. Use this for SPI generation.
+ * This will drain the entropy pool, use with care.
+ */
 int crypto_rnd(void **rnd, size_t len)
 {
     if (!CRYPTO_INITIALIZED)
