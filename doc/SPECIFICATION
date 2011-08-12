@@ -12,8 +12,10 @@ Note: For details on the SN_HEADER see FORMATS section
 Joining the Network is done by a 4-way handshake with the supernode. The first
 two packets are used for a DH Exchange, the second two to exchange information.
 
-A -> S: handshake syn
-S -> A: handshake syn-ack
+A -> S:	pre-handshake 
+S -> A: pre-handshake ack
+A -> S: handshake
+S -> A: handshake ack
 A -> S: payload packet: SN_HEADER(supernode_register:),
                         A_MAC,A_N2N_IP, A_LOCAL_SOCK
 S -> A: payload packet: SN_HEADER(supernode_register:ACK), A_PUB_SOCK
@@ -30,18 +32,18 @@ S -> A: payload packet: SN_HEADER(address_resolution:ACK), B_IP, B_MAC
 
 4. Establishing p2p connection to another edge
 
-A -> S: payload packet: SN_HEADER(edge_connect:), B_MAC,
+A -> S: payload packet: SN_HEADER(edge_connect:), SPI (Source), B_MAC,
                         A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
-S -> B: payload packet: SN_HEADER(edge_connect:), B_MAC,
+S -> B: payload packet: SN_HEADER(edge_connect:), SPI (Source), B_MAC,
                         A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
 B -> A: holepunch packet (will usually get lost)
-B -> S: payload packet: SN_HEADER(edge_connect:ACK), A_MAC,
+B -> S: payload packet: SN_HEADER(edge_connect:ACK), SPI (Source), A_MAC,
                         B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK
-S -> A: payload packet: SN_HEADER(edge_connect:ACK), A_MAC,
+S -> A: payload packet: SN_HEADER(edge_connect:ACK), SPI (Source), A_MAC,
                         B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK
 
-A -> B: handshake syn
-B -> A: handshake syn-ack
+A -> B: handshake
+B -> A: handshake ack
 (final acknowledgement?)
 
 5. Resume established connections with timeout for p2p hole
@@ -68,13 +70,13 @@ Edge:
 SPI == NULL:
   Parse header, check version
   switch(packet type)
-    handshake syn:
+    handshake:
       community name check ?
       HMAC check
       allocate new peer, save SPI
       DH
-      send handshake syn-ack
-    handshake syn-ack:
+      send handshake ack
+    handshake ack:
       HMAC check
       find_peer_by_spi (else: discard)
       DH (generate key)
@@ -116,7 +118,7 @@ The header is sent for all non-payload packets after 4 ZERO-bytes
    0 ! Version       ! Crypt-Version ! Packet Type   ! Flags         !
      +---------------+---------------+---------------+---------------+
 
-Packet Types: handshake, holepunch
+Packet Types: pre-handshake, handshake, holepunch
 Flags: ACK (acknowledge)
 
 SN_HEADER:

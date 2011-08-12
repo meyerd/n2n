@@ -18,8 +18,29 @@ A description of allowed packet formats follows.
 Other cryptographic protocol considerations will be discussed afterwards.
 
 
-handshake syn
+pre-handshake
 =============
+
+     len
+       4  ZERO
+[A]    4  header
+[A]    8  community
+[A]    4  SPI (Destination)
+[A]    4  SPI (Source)
+       ?  HMAC_IV
+      48  HMAC
+
+SPI (Source) is chosen by the sender. The sender expects the receiver to use
+the SPI (Source) value as identifier for all future packets. If the
+SPI the receiver expects is known, it will be put in the SPI (Destination)
+field. Otherwise this will be zero.
+
+The same packet is used in both directions (on return with the ACK-Flag set in
+the header)
+
+
+handshake
+=========
 
 SPI is the security parameter index, a nonce chosen by sender to identify the
 (unidirectional) security association.
@@ -27,19 +48,27 @@ SPI is the security parameter index, a nonce chosen by sender to identify the
      len
        4  ZERO
 [A]    4  header
-[A]    8  community name hash
 [A]    4  SPI
 [A]    ?  ECDH ephemeral public key
 [A]   48  KDF_SALT
        ?  HMAC_IV
       48  HMAC
 
-The SPI is chosen by the sender as a nonce and used as future SA identifier for
-this direction.
+The SPI is the target expects for packets is already known at this point.
 The KDF_SALT is a chosen random value used to salt the key derivation.
 HMAC values will be computed using the corresponding symmetric master key or a
 key derived from it.
 
+Because session keys are unidirectional, KDF_SALT must be chosen randomly by
+each party.
+
+The same packet is used in both directions (on return with the ACK-Flag set in
+the header)
+
+after the handshake:
+Both parties compute the session keys using the ephemeral public keys, the key
+derivation function and the KDF_SALT. These session keys form the security
+associations (SA) identified by the SPI.
 
 
 handshake syn-ack
@@ -52,24 +81,10 @@ SPI is the security parameter index, a nonce chosen by sender to identify the
        4  ZERO
 [A]    4  header
 [A]    4  SPI
-[A]    4  SPI_A
 [A]    ?  ECDH ephemeral public key
 [A]   48  KDF_SALT
        ?  HMAC_IV
       48  HMAC
-
-The SPI is chosen by the sender as a nonce.
-The KDF_SALT is a chosen random value.
-SPI_A is SPI of the protocol initiating party. It is used to identify this
-reply.
-
-Because session keys are unidirectional, the SPI and KDF_SALT must be chosen
-randomly by each party.
-
-after the handshake:
-Both parties compute the session keys using the ephemeral public keys, the key
-derivation function and the KDF_SALT. These session keys form the security
-associations (SA) identified by the SPI.
 
 
 
