@@ -948,6 +948,78 @@ static void update_peer_address(n2n_edge_t * eee, uint8_t from_supernode,
     }
 }
 
+
+#define MAX_SUPERNODE_TRIES 3
+#define RETRY_INTERVAL 5
+
+static int initial_supernode_registration(n2n_edge_t *eee) {
+    socklen_t sender_socklen;
+    struct sockaddr_in sender_sock;
+    uint8_t udp_buf[N2N_PKT_BUF_SIZE]; /* Compete UDP packet */
+    ssize_t recvlen;
+    struct timeval wait_time;
+    fd_set socket_mask;
+    int rc, tries, phase, next_phase;
+
+    for (phase = 0; phase < 3; phase++) {
+        next_phase = 0;
+        for (tries = 0; tries < MAX_SUPERNODE_TRIES; tries++) {
+            switch(phase) {
+            case 0:
+                /* send supernode pre-handshake */
+                break;
+            case 1:
+                /* send supernode handshake */
+                break;
+            case 2:
+                /* send supernode */
+                break;
+            default:
+                break;
+            }
+
+            /* wait for return */
+            wait_time.tv_sec = 5;
+            wait_time.tv_usec = 0;
+            FD_ZERO(&socket_mask);
+            FD_SET(eee->udp_sock, &socket_mask);
+            rc = select(eee->udp_sock + 1, &socket_mask, NULL, NULL, &wait_time);
+            if (rc > 0) {
+                sender_socklen = sizeof(sender_sock);
+                recvlen = recvfrom(eee->udp_sock, udp_buf, N2N_PKT_BUF_SIZE, 0,
+                                   (struct sockaddr *) &sender_sock,
+                                   (socklen_t*) &sender_socklen);
+
+                switch(phase) {
+                case 0:
+                    /* check pre-hanshake reply */
+                    next_phase = 1;
+                    break;
+                case 1:
+                    /* check hanshake reply */
+                    next_phase = 1;
+                    break;
+                case 2:
+                    /* check registration */
+                    next_phase = 1;
+                    break;
+                default:
+                    break;
+                }
+                /* check correct reply */
+            }
+            if (next_phase) {
+                break;
+            }
+        }
+        if (tries == MAX_SUPERNODE_TRIES) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 #if defined(DUMMY_ID_00001) /* Disabled waiting for config option to enable it */
 
 static char gratuitous_arp[] = {
@@ -2407,6 +2479,11 @@ int main(int argc, char* argv[])
         return(-1);
     }
 
+    if ((initial_supernode_registration(&eee)) != 0) {
+        traceEvent(TRACE_ERROR, "Failed to register with supernode");
+        return(-1);
+    }
+
     if (eee.local_sock_ena) {
         sa_len = sizeof(sa);
         if (getsockname(eee.udp_sock, (struct sockaddr *) &sa, &sa_len) == -1) {
@@ -2431,8 +2508,6 @@ int main(int argc, char* argv[])
     }
 
     traceEvent(TRACE_NORMAL, "edge started");
-
-    update_supernode_reg(&eee, time(NULL));
 
     return run_loop(&eee);
 }
