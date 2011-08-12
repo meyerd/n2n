@@ -357,35 +357,8 @@ void dealloc_peer(peer_info_t* peer)
     free(peer);
 }
 
-/** Purge old items from the peer_list and return the number of items that were removed. */
-size_t purge_peer_list(struct peer_info ** peer_list, time_t purge_before)
-{
-    struct peer_info *scan;
-    struct peer_info *prev;
-    size_t retval = 0;
-
-    scan = *peer_list;
-    prev = NULL;
-    while (scan != NULL) {
-        if (scan->last_seen < purge_before) {
-            struct peer_info *next = scan->next;
-
-            if (prev == NULL) {
-                *peer_list = next;
-            } else {
-                prev->next = next;
-            }
-            ++retval;
-            dealloc_peer(scan);
-            scan = next;
-        } else {
-            prev = scan;
-            scan = scan->next;
-        }
-    }
-    return retval;
-}
-
+/** Purge old items from the peer_list hashtable and return the number of items
+ * that were removed. */
 size_t purge_hashed_peer_list_t(peer_info_t ** peer_list, time_t purge_before)
 {
     peer_info_t *ll;
@@ -402,11 +375,6 @@ size_t purge_hashed_peer_list_t(peer_info_t ** peer_list, time_t purge_before)
     }
 
     return retval;
-}
-
-size_t purge_expired_registrations(struct peer_info ** peer_list)
-{
-    return purge_with_function(peer_list, purge_peer_list);
 }
 
 size_t hashed_purge_expired_registrations(peer_info_t ** peer_list)
