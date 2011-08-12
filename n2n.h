@@ -283,11 +283,9 @@ void dealloc_peer(peer_info_t* peer);
 size_t hashed_peer_list_t_size(peer_info_t** htab);
 size_t purge_with_function(struct peer_info ** peer_list,
         size_t(*purger)(struct peer_info ** peer_list, time_t purge_before));
-size_t purge_peer_list(struct peer_info ** peer_list, time_t purge_before);
 size_t purge_hashed_peer_list_t(peer_info_t ** peer_list, time_t purge_before);
 size_t clear_peer_list(struct peer_info ** peer_list);
 size_t clear_hashed_peer_info_t_list(peer_info_t ** peer_list);
-size_t purge_expired_registrations(struct peer_info ** peer_list);
 size_t hashed_purge_expired_registrations(struct peer_info ** peer_list);
 
 /* version.c */
