@@ -1,8 +1,13 @@
 crypto protocol v0.0.1
 
 Does gcrypt free() zeroize?
-Replay: Nonces?
 play through attacks
+
+master key
+==========
+
+- two symmetric 384 bit highest quality keys
+- user documentation should recommend to change it at least once a year
 
 
 HMAC for handshake packets
