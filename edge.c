@@ -28,7 +28,8 @@
 #include <assert.h>
 #include <sys/stat.h>
 #include "minilzo.h"
-#include "crypto.h"
+#include "crypto/crypto.h"
+#include "crypto/aes.h"
 
 #if defined(DEBUG)
 #define SOCKET_TIMEOUT_INTERVAL_SECS    5
