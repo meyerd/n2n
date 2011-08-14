@@ -9,6 +9,10 @@
 int crypto_init(void);
 int crypto_is_initialized(void);
 void crypto_deinit(void);
+
+
+int crypto_set_key_p2p(void *key, size_t len);
+int crypto_set_key_snode(void *key, size_t len);
 int crypto_rnd(void **rnd, size_t len);
 
 

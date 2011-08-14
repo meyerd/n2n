@@ -51,6 +51,11 @@ int crypto_init(void)
 void crypto_deinit(void)
 {
     CRYPTO_INITIALIZED = 0;
+    /* wipe the keys */
+    memset(master_key_p2p.data, 0x00, master_key_p2p.size);
+    gnutls_free(master_key_p2p.data);
+    memset(master_key_snode.data, 0x00, master_key_snode.size);
+    gnutls_free(master_key_snode.data);
     gnutls_global_deinit();
 }
 
@@ -61,24 +66,26 @@ int crypto_is_initialized(void)
 }
 
 /* set p2p hmac key */
-int crypto_set_key_p2p(void *key, len)
+int crypto_set_key_p2p(void *key, size_t len)
 {
     CHECK_CRYPTO();
-    if (master_key_p2p.len > 0 || len != MASTER_KEY_SIZE)
+    if (master_key_p2p.size > 0 || len != MASTER_KEY_SIZE)
         return GNUTLS_E_APPLICATION_ERROR_MIN;
     master_key_p2p.data = gnutls_secure_malloc(len);
     memcpy(master_key_p2p.data, key, len);
+    master_key_p2p.size = len;
     return 0;
 }
 
 /* set supernode hmac key */
-int crypto_set_key_snode(void *key, len)
+int crypto_set_key_snode(void *key, size_t len)
 {
     CHECK_CRYPTO();
-    if (master_key_snode.len > 0 || len != MASTER_KEY_SIZE)
+    if (master_key_snode.size > 0 || len != MASTER_KEY_SIZE)
         return GNUTLS_E_APPLICATION_ERROR_MIN;
     master_key_snode.data = gnutls_secure_malloc(len);
     memcpy(master_key_snode.data, key, len);
+    master_key_snode.size = len;
     return 0;
 }
 
