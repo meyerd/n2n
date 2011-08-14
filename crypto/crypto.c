@@ -8,8 +8,11 @@
 
 #define GCRYPT_NO_DEPRECATED
 #define DERIV_HASH_SIZE 48
+#define MASTER_KEY_SIZE 48
 
 int CRYPTO_INITIALIZED = 0;
+gnutls_datum_t master_key_p2p;
+gnutls_datum_t master_key_snode;
 
 /* initialize global values for the cryptographic engine */
 int crypto_init(void)
@@ -19,7 +22,7 @@ int crypto_init(void)
     gc_err = gcry_control(GCRYCTL_SET_VERBOSITY, 9, 0);
     gc_err = gcry_control(GCRYCTL_SET_DEBUG_FLAGS, 0x03);
     if (!gcry_check_version(GCRYPT_VERSION)) {
-        traceEvent(TRACE_ERROR, "gcrypt init error: unsuitable version");
+        traceEvent(TRACE_ERROR, "gcrypt init error");
         return -1;
     }
 
@@ -55,6 +58,28 @@ void crypto_deinit(void)
 int crypto_is_initialized(void)
 {
     return CRYPTO_INITIALIZED;
+}
+
+/* set p2p hmac key */
+int crypto_set_key_p2p(void *key, len)
+{
+    CHECK_CRYPTO();
+    if (master_key_p2p.len > 0 || len != MASTER_KEY_SIZE)
+        return GNUTLS_E_APPLICATION_ERROR_MIN;
+    master_key_p2p.data = gnutls_secure_malloc(len);
+    memcpy(master_key_p2p.data, key, len);
+    return 0;
+}
+
+/* set supernode hmac key */
+int crypto_set_key_snode(void *key, len)
+{
+    CHECK_CRYPTO();
+    if (master_key_snode.len > 0 || len != MASTER_KEY_SIZE)
+        return GNUTLS_E_APPLICATION_ERROR_MIN;
+    master_key_snode.data = gnutls_secure_malloc(len);
+    memcpy(master_key_snode.data, key, len);
+    return 0;
 }
 
 //TODO use rfc kdf for hmac key?
