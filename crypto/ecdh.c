@@ -1,15 +1,19 @@
 #include <gcrypt.h>
 
 #include "crypto.h"
+#include "ecdh.h"
+
+// TODO compute test vector
 
 /* generate an ephemeral ecc key pair */
 int ecdh_init(void **keypair)
 {
+    CHECK_CRYPTO();
     /* don't just change the curve, it might have other implications */
     gcry_sexp_t key_parms;
-    CHECK_GCRY(gcry_sexp_build(&key_parms, NULL, "(genkey (ecdh (curve \"NIST P-384\")))"));
+    GCRY(gcry_sexp_build(&key_parms, NULL, "(genkey (ecdh (curve \"NIST P-384\")))"));
 
-    CHECK_GCRY(gcry_pk_genkey(*keypair, key_parms));
+    GCRY(gcry_pk_genkey(*keypair, key_parms));
 
     gcry_sexp_release(key_parms);
     return 0;
@@ -21,6 +25,7 @@ int ecdh_init(void **keypair)
  */
 int ecdh_export(void *keypair, void **ephemeral_public_key)
 {
+    CHECK_CRYPTO();
     gcry_sexp_t pubkey;
     gcry_sexp_t sexp_q;
     gcry_mpi_t mpi_q;
@@ -37,7 +42,7 @@ int ecdh_export(void *keypair, void **ephemeral_public_key)
     n = (mpi_get_nbits(mpi_q) + 7) / 8;
     *ephemeral_public_key = malloc(n);
 
-    CHECK_GCRY(gcry_mpi_print(GCRYMPI_FMT_USG, *ephemeral_public_key, n, &n, mpi_q));
+    GCRY(gcry_mpi_print(GCRYMPI_FMT_USG, *ephemeral_public_key, n, &n, mpi_q));
 
     gcry_sexp_release(pubkey);
     gcry_sexp_release(sexp_q);
@@ -61,6 +66,7 @@ static void printhex(void *h, int len)
  */
 static int extract_x(gcry_mpi_t *shared_point, void **shared_secret)
 {
+    CHECK_CRYPTO();
     size_t mpi_size;
     size_t x_size;
     unsigned char *buf;
@@ -69,15 +75,15 @@ static int extract_x(gcry_mpi_t *shared_point, void **shared_secret)
     mpi_size = (gcry_mpi_get_nbits(*shared_point) + 7) / 8;
 
     /* get shared point */
-    buf = gnutls_malloc(mpi_size);
-    CHECK_GCRY(gcry_mpi_print(GCRYMPI_FMT_USG, buf, mpi_size, &mpi_size,
+    buf = gnutls_secure_malloc(mpi_size);
+    GCRY(gcry_mpi_print(GCRYMPI_FMT_USG, buf, mpi_size, &mpi_size,
                 *shared_point));
 
     /* size of one coordinate */
     x_size = (mpi_size - 1) / 2;
 
     /* cut off first byte and throw away tail with y component */
-    *shared_secret = gnutls_malloc(x_size);
+    *shared_secret = gnutls_secure_malloc(x_size);
     memcpy(*shared_secret, buf + 1, x_size);
 
     /* zeroize buffer with shared secret point */
@@ -92,6 +98,7 @@ static int extract_x(gcry_mpi_t *shared_point, void **shared_secret)
  */
 int ecdh_receive_deinit(void **keypair, void *epubkey, void **shared_secret)
 {
+    CHECK_CRYPTO();
     gcry_sexp_t pubkey;
     gcry_sexp_t privkey;
     gcry_sexp_t sexp_d;
@@ -104,7 +111,7 @@ int ecdh_receive_deinit(void **keypair, void *epubkey, void **shared_secret)
     size_t n;
 
     /* build public key */
-    CHECK_GCRY(gcry_sexp_build(&pubkey, 0, "(public-key (ecdh (q %m) (curve \"NIST P-384\")))", *(gcry_mpi_t *) epubkey));
+    GCRY(gcry_sexp_build(&pubkey, 0, "(public-key (ecdh (q %m) (curve \"NIST P-384\")))", *(gcry_mpi_t *) epubkey));
 
     /* extract private scalar d */
     privkey = gcry_sexp_find_token(**(gcry_sexp_t **) keypair, "private-key", 0);
@@ -112,10 +119,10 @@ int ecdh_receive_deinit(void **keypair, void *epubkey, void **shared_secret)
     mpi_d = gcry_sexp_nth_mpi(sexp_d, 1, GCRYMPI_FMT_USG);
 
     /* prepare d for computation */
-    CHECK_GCRY(gcry_sexp_build(&plain, 0, "(data (value %m))", mpi_d));
+    GCRY(gcry_sexp_build(&plain, 0, "(data (value %m))", mpi_d));
 
     /* encrypt our private key d with the other party's public key */
-    CHECK_GCRY(gcry_pk_encrypt(&enc, plain, pubkey));
+    GCRY(gcry_pk_encrypt(&enc, plain, pubkey));
 
     /* extract shared point s */
     sexp_s = gcry_sexp_find_token(enc, "s", 0 );
@@ -123,7 +130,7 @@ int ecdh_receive_deinit(void **keypair, void *epubkey, void **shared_secret)
 
     /* extract x coordinate of point: this is our shared secret */
     n = (((gcry_mpi_get_nbits(mpi_s) + 7) / 8) - 1) / 2;
-    *shared_secret = gnutls_malloc(n);
+    *shared_secret = gnutls_secure_malloc(n);
     sslen = extract_x(&mpi_s, shared_secret);
     if (sslen < 0)
         return GPG_ERR_GENERAL;
