@@ -1,16 +1,21 @@
+#include <stdio.h>
+
+#include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
 
+#include "../n2n.h"
+
+
 int crypto_init(void);
+int crypto_is_initialized(void);
 void crypto_deinit(void);
 int crypto_rnd(void **rnd, size_t len);
 
-int aes_gcm_session_create(gnutls_datum_t *key, gnutls_cipher_hd_t **ctx);
-void aes_gcm_session_destroy(gnutls_cipher_hd_t *ctx);
 
-int aes_gcm_authenc(gnutls_cipher_hd_t ctx, uint8_t *pt, size_t pt_len,
-        uint8_t *out, size_t out_len, uint8_t *ad, size_t ad_len);
-int aes_gcm_authdec(gnutls_cipher_hd_t ctx, uint8_t *in, size_t in_len,
-        uint8_t *out, size_t out_len, uint8_t *ad, size_t ad_len);
+/* internal stuff */
 
-void *aes_gcm_dummy_key(void);
+#define GCRY(x) { gcry_error_t ret = (x); if (ret) { traceEvent(TRACE_ERROR, "gcrypt error %d:%s in %s on line %d\n", gcry_err_code(ret), gcry_strerror(ret), gcry_strsource(ret), __LINE__ ); return ret; } }
 
+#define GTLS(x) { int ret = (x) ; if (ret) { traceEvent(TRACE_ERROR, "gnutls error %s (code %d): %s", gnutls_strerror_name(ret), ret, gnutls_strerror(ret)); return ret; } }
+
+#define CHECK_CRYPTO() { if (crypto_is_initialized() == 0) { return GNUTLS_E_APPLICATION_ERROR_MIN; } }
