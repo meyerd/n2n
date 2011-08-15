@@ -3,24 +3,21 @@
 #include <gcrypt.h>
 #include "../n2n.h"
 #include "crypto.h"
-#include "dh.h"
 #include "aes.h"
+#include "hmac.h"
 
 #define GCRYPT_NO_DEPRECATED
 #define DERIV_HASH_SIZE 48
-#define MASTER_KEY_SIZE 48
 
 int CRYPTO_INITIALIZED = 0;
-gnutls_datum_t master_key_p2p;
-gnutls_datum_t master_key_snode;
 
 /* initialize global values for the cryptographic engine */
 int crypto_init(void)
 {
-    gcry_error_t gc_err;
     /* initialize libgcrypt */
-    gc_err = gcry_control(GCRYCTL_SET_VERBOSITY, 9, 0);
-    gc_err = gcry_control(GCRYCTL_SET_DEBUG_FLAGS, 0x03);
+    //TODO remove debug
+    //gcry_control(GCRYCTL_SET_VERBOSITY, 9, 0);
+    //gcry_control(GCRYCTL_SET_DEBUG_FLAGS, 0x03);
     if (!gcry_check_version(GCRYPT_VERSION)) {
         traceEvent(TRACE_ERROR, "gcrypt init error");
         return -1;
@@ -52,10 +49,7 @@ void crypto_deinit(void)
 {
     CRYPTO_INITIALIZED = 0;
     /* wipe the keys */
-    memset(master_key_p2p.data, 0x00, master_key_p2p.size);
-    gnutls_free(master_key_p2p.data);
-    memset(master_key_snode.data, 0x00, master_key_snode.size);
-    gnutls_free(master_key_snode.data);
+    hmac_wipe_keys();
     gnutls_global_deinit();
 }
 
@@ -65,38 +59,10 @@ int crypto_is_initialized(void)
     return CRYPTO_INITIALIZED;
 }
 
-/* set p2p hmac key */
-int crypto_set_key_p2p(void *key, size_t len)
-{
-    CHECK_CRYPTO();
-    if (master_key_p2p.size > 0 || len != MASTER_KEY_SIZE)
-        return GNUTLS_E_APPLICATION_ERROR_MIN;
-    master_key_p2p.data = gnutls_secure_malloc(len);
-    memcpy(master_key_p2p.data, key, len);
-    master_key_p2p.size = len;
-    return 0;
-}
-
-/* set supernode hmac key */
-int crypto_set_key_snode(void *key, size_t len)
-{
-    CHECK_CRYPTO();
-    if (master_key_snode.size > 0 || len != MASTER_KEY_SIZE)
-        return GNUTLS_E_APPLICATION_ERROR_MIN;
-    master_key_snode.data = gnutls_secure_malloc(len);
-    memcpy(master_key_snode.data, key, len);
-    master_key_snode.size = len;
-    return 0;
-}
-
-//TODO use rfc kdf for hmac key?
-//TODO look at ipsec, tls: how do they use their secret keymat/mastersecret
-//values?
 /* usage for AES session keys:
  * derive_key(*dh_ss, dh_sslen, *from_spi, *to_spi, *salt_a, saltlen,
- *         "N2N edge AES-GCM 256 session key", algoidlen,
+ *         "N2N AES-GCM 256 session key", algoidlen,
  *         NULL, 0, **sesskey_a, 32)
- *   TODO should we really use the master key here?
  *
  * usage for HMAC authentication keys:
  * derive_key(*masterkey, masterkeylen, *from_spi, *to_spi, *salt_a, saltlen,
@@ -104,7 +70,7 @@ int crypto_set_key_snode(void *key, size_t len)
  *         NULL, 0, **hmackey_a, 48)
  */
 /* NIST concatenation key derivation function as in NIST SP 800-56A */
-static int derive_key(const void *ss, size_t sslen,
+int derive_key(const void *ss, size_t sslen,
         uint32_t *from_spi, uint32_t *to_spi,
         const void *salt, size_t saltlen,
         const char *algoid, size_t algoidlen,
