@@ -49,6 +49,7 @@ int ecdh_export(void *keypair, void **ephemeral_public_key)
     gcry_mpi_release(mpi_q);
     return n;
 }
+// TODO make sure ephemeral_public_key is free()
 
 static void printhex(void *h, int len)
 {
@@ -75,7 +76,7 @@ static int extract_x(gcry_mpi_t *shared_point, void **shared_secret)
     mpi_size = (gcry_mpi_get_nbits(*shared_point) + 7) / 8;
 
     /* get shared point */
-    buf = gnutls_secure_malloc(mpi_size);
+    buf = xmalloc_sec(mpi_size);
     GCRY(gcry_mpi_print(GCRYMPI_FMT_USG, buf, mpi_size, &mpi_size,
                 *shared_point));
 
@@ -83,7 +84,6 @@ static int extract_x(gcry_mpi_t *shared_point, void **shared_secret)
     x_size = (mpi_size - 1) / 2;
 
     /* cut off first byte and throw away tail with y component */
-    *shared_secret = gnutls_secure_malloc(x_size);
     memcpy(*shared_secret, buf + 1, x_size);
 
     /* zeroize buffer with shared secret point */
@@ -92,61 +92,75 @@ static int extract_x(gcry_mpi_t *shared_point, void **shared_secret)
     return x_size;
 }
 
-
-//TODO gnutls_free(shared secret)
+//TODO gnutls_free(shared secret), caller must free() epubkey herself
 /* Return a negative error code or the size of the shared secret
  */
 int ecdh_receive_deinit(void **keypair, void *epubkey, void **shared_secret)
 {
     CHECK_CRYPTO();
     gcry_sexp_t pubkey;
-    gcry_sexp_t privkey;
-    gcry_sexp_t sexp_d;
-    gcry_mpi_t mpi_d;
-    gcry_sexp_t plain;
-    gcry_sexp_t enc;
-    gcry_sexp_t sexp_s;
-    gcry_mpi_t mpi_s;
+    gcry_sexp_t value_d;  // prepared secret value
     int sslen;
-    size_t n;
 
     /* build public key */
-    GCRY(gcry_sexp_build(&pubkey, 0, "(public-key (ecdh (q %m) (curve \"NIST P-384\")))", *(gcry_mpi_t *) epubkey));
+    GCRY(gcry_sexp_build(&pubkey, 0,
+                "(public-key (ecdh (q %m) (curve \"NIST P-384\")))",
+                *(gcry_mpi_t *) epubkey));
 
     /* extract private scalar d */
-    privkey = gcry_sexp_find_token(**(gcry_sexp_t **) keypair, "private-key", 0);
-    sexp_d = gcry_sexp_find_token(privkey, "private-key", 0);
-    mpi_d = gcry_sexp_nth_mpi(sexp_d, 1, GCRYMPI_FMT_USG);
+    {
+        gcry_sexp_t privkey;
+        gcry_sexp_t sexp_d;
+        gcry_mpi_t mpi_d;
 
-    /* prepare d for computation */
-    GCRY(gcry_sexp_build(&plain, 0, "(data (value %m))", mpi_d));
+        privkey = gcry_sexp_find_token(**(gcry_sexp_t **) keypair,
+                    "private-key", 0);
+        sexp_d = gcry_sexp_find_token(privkey, "d", 0);
+        mpi_d = gcry_sexp_nth_mpi(sexp_d, 1, GCRYMPI_FMT_USG);
 
-    /* encrypt our private key d with the other party's public key */
-    GCRY(gcry_pk_encrypt(&enc, plain, pubkey));
+        /* prepare d for computation */
+        GCRY(gcry_sexp_build(&value_d, 0, "(data (value %m))", mpi_d));
 
-    /* extract shared point s */
-    sexp_s = gcry_sexp_find_token(enc, "s", 0 );
-    mpi_s = gcry_sexp_nth_mpi(sexp_s, 1, GCRYMPI_FMT_USG);
+        gcry_sexp_release(privkey);
+        gcry_sexp_release(sexp_d);
+        gcry_mpi_release(mpi_d);
+    }
 
-    /* extract x coordinate of point: this is our shared secret */
-    n = (((gcry_mpi_get_nbits(mpi_s) + 7) / 8) - 1) / 2;
-    *shared_secret = gnutls_secure_malloc(n);
-    sslen = extract_x(&mpi_s, shared_secret);
-    if (sslen < 0)
-        return GPG_ERR_GENERAL;
+    {
+        gcry_mpi_t mpi_s;
+        {
+            gcry_sexp_t enc;
+            gcry_sexp_t sexp_s;
+            /* encrypt our private key d with the other party's public key */
+            GCRY(gcry_pk_encrypt(&enc, value_d, pubkey));
+
+            /* extract shared point s */
+            sexp_s = gcry_sexp_find_token(enc, "s", 0 );
+            mpi_s = gcry_sexp_nth_mpi(sexp_s, 1, GCRYMPI_FMT_USG);
+
+            gcry_sexp_release(enc);
+            gcry_sexp_release(sexp_s);
+        }
+
+        {
+            /* extract x coordinate of point: this is our shared secret */
+            size_t n;
+            n = (((gcry_mpi_get_nbits(mpi_s) + 7) / 8) - 1) / 2;
+            *shared_secret = xmalloc_sec(n);
+            sslen = extract_x(&mpi_s, shared_secret);
+            if (sslen < 0)
+                return GPG_ERR_GENERAL;
+        }
+        gcry_mpi_release(mpi_s);
+    }
 
     //TODO remove debug
     printf("shared secret:");
     printhex(*shared_secret, sslen);
 
+    // wipe all byproducts of shared secret
     gcry_sexp_release(pubkey);
-    gcry_sexp_release(privkey);
-    gcry_sexp_release(sexp_d);
-    gcry_mpi_release(mpi_d);
-    gcry_sexp_release(plain);
-    gcry_sexp_release(enc);
-    gcry_sexp_release(sexp_s);
-    gcry_mpi_release(mpi_s);
+    gcry_sexp_release(value_d);
     gcry_sexp_release(**(gcry_sexp_t **) keypair);
     return sslen;
 }
