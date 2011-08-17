@@ -7,8 +7,10 @@
 gnutls_datum_t *master_key_p2p;
 gnutls_datum_t *master_key_snode;
 
-/* set symmetric master key; use snode = 1 for supernode or snode = 0 for p2p
- * key
+/* Set symmetric master key; use snode = 1 for supernode or snode = 0 for p2p
+ * key.
+ * There is no deinit routine, since it does not make sense to run the program
+ * without master keys. Use crypto_deinit() to wipe the keys.
  */
 int hmac_set_key(void *key, size_t len, uint8_t snode)
 {
@@ -21,16 +23,10 @@ int hmac_set_key(void *key, size_t len, uint8_t snode)
     }
     if (mkey->size > 0 || len != MASTER_KEY_SIZE)
         return GNUTLS_E_APPLICATION_ERROR_MIN;
-    mkey->data = gnutls_secure_malloc(len);
+    mkey->data = xmalloc_sec(len);
     memcpy(mkey->data, key, len);
     mkey->size = len;
     return 0;
-}
-
-void hmac_wipe_keys(void)
-{
-    gnutls_free(master_key_p2p->data);
-    gnutls_free(master_key_snode->data);
 }
 
 /* Pick a salt, derive special key, authenticate the data. This function
