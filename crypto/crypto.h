@@ -3,6 +3,7 @@
 
 #include "../n2n.h"
 
+void *xmalloc_sec(size_t size);
 
 int crypto_init(void);
 int crypto_is_initialized(void);

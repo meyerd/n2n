@@ -16,17 +16,23 @@ int crypto_init(void)
 {
     /* initialize libgcrypt */
     //TODO remove debug
-    //gcry_control(GCRYCTL_SET_VERBOSITY, 9, 0);
-    //gcry_control(GCRYCTL_SET_DEBUG_FLAGS, 0x03);
+    GCRY(gcry_control(GCRYCTL_SET_VERBOSITY, GCRY_LOG_DEBUG));
+    // use this at good places
+    GCRY(gcry_control(GCRYCTL_DUMP_RANDOM_STATS));
+    GCRY(gcry_control(GCRYCTL_DUMP_MEMORY_STATS));
+    GCRY(gcry_control(GCRYCTL_DUMP_SECMEM_STATS));
+    //GCRY(gcry_control(GCRYCTL_SET_DEBUG_FLAGS, 0x03));
+    //gcry_set_log_handler(log_handler, NULL);
+
+    GCRY(gcry_control(GCRYCTL_ENABLE_M_GUARD));
     if (!gcry_check_version(GCRYPT_VERSION)) {
         traceEvent(TRACE_ERROR, "gcrypt init error");
         return -1;
     }
-
-    /* Allocate a pool of 16k secure memory.  This make the secure memory
-     * available and also drops privileges where needed.
-     */
+    GCRY(gcry_control(GCRYCTL_USE_SECURE_RNDPOOL));
+    // allocate a pool of 16k secure memory
     GCRY(gcry_control(GCRYCTL_INIT_SECMEM, 16384, 0));
+    GCRY(gcry_control(GCRYCTL_SELFTEST));
 
     /* Tell Libgcrypt that initialization has completed. */
     GCRY(gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0));
@@ -44,12 +50,12 @@ int crypto_init(void)
     return 0;
 }
 
-/* free gnutls structures */
+/* call this in any case of program termination */
 void crypto_deinit(void)
 {
     CRYPTO_INITIALIZED = 0;
-    /* wipe the keys */
-    hmac_wipe_keys();
+    /* this will zeroise all keys stored in secure memory */
+    gcry_control(GCRYCTL_TERM_SECMEM, 0);
     gnutls_global_deinit();
 }
 
@@ -58,6 +64,23 @@ int crypto_is_initialized(void)
 {
     return CRYPTO_INITIALIZED;
 }
+
+/* use this function to allocate secure memory */
+void *xmalloc_sec(size_t size)
+{
+    void *ptr = gnutls_secure_malloc(size);
+    if (ptr == NULL) {
+        traceEvent(TRACE_ERROR, "allocation of secure memory failed");
+        /* calls crypto_deinit(), which will wipe the memory */
+        //edge_deinit();
+        //TODO; also: wrap malloc to exit function as well
+        crypto_deinit();
+        exit(42);
+    } else {
+        return ptr;
+    }
+}
+
 
 /* usage for AES session keys:
  * derive_key(*dh_ss, dh_sslen, *from_spi, *to_spi, *salt_a, saltlen,
@@ -69,7 +92,7 @@ int crypto_is_initialized(void)
  *         "N2N HMAC-SHA384 authentication key", algoidlen,
  *         NULL, 0, **hmackey_a, 48)
  */
-/* NIST concatenation key derivation function as in NIST SP 800-56A */
+/* concatenation key derivation function as in NIST SP 800-56A */
 int derive_key(const void *ss, size_t sslen,
         uint32_t *from_spi, uint32_t *to_spi,
         const void *salt, size_t saltlen,
@@ -97,7 +120,7 @@ int derive_key(const void *ss, size_t sslen,
     size_t inputlen = counterlen + sslen;
     inputlen += algoidlen + (2 * spilen) + saltlen + other_sslen;
 
-    input = gnutls_secure_malloc(inputlen);
+    input = xmalloc_sec(inputlen);
 
     /* hash(counter || shared_secret || otherinfo) */
     counter = htonl(counter);  // must be big endian
@@ -117,15 +140,16 @@ int derive_key(const void *ss, size_t sslen,
     ptr += saltlen;
     memcpy(input + ptr, other_ss, other_sslen);
 
-    keymat = gnutls_secure_malloc(DERIV_HASH_SIZE);
+    keymat = xmalloc_sec(DERIV_HASH_SIZE);
     GTLS(gnutls_hash_fast(GNUTLS_DIG_SHA384, input, inputlen, keymat));
     gnutls_free(input);
 
-    *derived = gnutls_secure_malloc(DERIV_HASH_SIZE);
-    memcpy(*derived, keymat, AEAD_KEY_SIZE);
+    *derived = xmalloc_sec(derivedlen);
+    memcpy(*derived, keymat, derivedlen);
     gnutls_free(keymat);
     return 0;
 }
+//TODO make sure to gnutls_free() derived
 
 /* derive a session key from the shared secret 'ss' as source_key and the salt
  * using a HMAC based key derivation function (RFC 5869):
@@ -157,9 +181,9 @@ static int derive_key_rfc5869(const void **salt, size_t saltlen,
 
     uint8_t *prk;
     uint8_t *okm;
-    prk = gnutls_secure_malloc(DERIV_HASH_SIZE); // pseudorandom key
-    okm = gnutls_secure_malloc(DERIV_HASH_SIZE); // output key material
-    derived = gnutls_secure_malloc(derivedlen);
+    prk = xmalloc_sec(DERIV_HASH_SIZE); // pseudorandom key
+    okm = xmalloc_sec(DERIV_HASH_SIZE); // output key material
+    derived = xmalloc_sec(derivedlen);
 
     /* the salt is used as the key, the shared secret is used as data */
     GTLS(gnutls_hmac_fast(GNUTLS_MAC_SHA384, *salt, saltlen, *ss, sslen, prk));
@@ -181,7 +205,7 @@ int crypto_rnd(void **rnd, size_t len)
 {
     CHECK_CRYPTO();
 
-    *rnd = gnutls_secure_malloc(len);
+    *rnd = xmalloc_sec(len);
     GTLS(gnutls_rnd(GNUTLS_RND_RANDOM, *rnd, len));
     return 0;
 }
