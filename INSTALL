@@ -1,7 +1,6 @@
 Dependencies:
 - libgcrypt >= 1.5
-- gnutls >= 3.0.0, depends itself on
-- nettle 2.2
+- GnuTLS >= 3.0.1 (depends itself on nettle 2.2 at the time of writing)
 
 New install procedure, using cmake.
 
