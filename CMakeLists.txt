@@ -42,7 +42,7 @@ if(NOT WIN32)
 set(CMAKE_C_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs -fPIC")
 set(CMAKE_CXX_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
 # Debug 
-set(CMAKE_C_FLAGS_DEBUG "-g")
+set(CMAKE_C_FLAGS_DEBUG "-g -Wno-deprecated-declarations")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 # Release
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
@@ -58,7 +58,9 @@ endif(NOT WIN32)
 
 # install gnutls >= 2.99.0 in your system path or here
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/gnutls/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libgcrypt/include)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/gnutls/lib)
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/libgcrypt/lib)
 
 # libgcrypt
 gcr_check(GCRYPT REQUIRED gcrypt)
@@ -66,7 +68,10 @@ gcr_check(GCRYPT REQUIRED gcrypt)
 add_library(n2n n2n.c
                 n2n_keyfile.c
                 wire.c
-                crypto.c
+                crypto/crypto.c
+                crypto/aes.c
+                crypto/ecdh.c
+                crypto/hmac.c
                 minilzo.c
                 twofish.c
                 transform_null.c
@@ -89,8 +94,6 @@ target_link_libraries(n2n gnutls gcrypt)
 if(N2N_OPTION_AES)
 target_link_libraries(n2n crypto)
 endif(N2N_OPTION_AES)
-
-target_link_libraries(n2n gnutls gcrypt)
 
 # For Solaris (or OpenSolaris?)
 #target_link_libraries(n2n socket nsl)

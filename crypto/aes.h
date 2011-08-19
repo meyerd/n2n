@@ -1,8 +1,6 @@
-#include <gnutls/crypto.h>
-
-int crypto_init(void);
-void crypto_deinit(void);
-int crypto_rnd(void **rnd, size_t len);
+#define AEAD_KEY_SIZE 16  // TODO remove
+#define AEAD_IV_SIZE 12
+#define AEAD_TAG_SIZE 16
 
 int aes_gcm_session_create(gnutls_datum_t *key, gnutls_cipher_hd_t **ctx);
 void aes_gcm_session_destroy(gnutls_cipher_hd_t *ctx);

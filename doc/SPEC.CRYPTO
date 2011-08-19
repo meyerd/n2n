@@ -22,7 +22,7 @@ pre-handshake
 =============
 
      len
-       4  ZERO
+       4  ZERO (special SPI = 0 denotes handshake packet)
 [A]    4  header
 [A]    8  community
 [A]    4  SPI (Destination)
@@ -46,7 +46,7 @@ SPI is the security parameter index, a nonce chosen by sender to identify the
 (unidirectional) security association.
 
      len
-       4  ZERO
+       4  ZERO (special SPI = 0 denotes handshake packet)
 [A]    4  header
 [A]    4  SPI
 [A]    ?  ECDH ephemeral public key
@@ -78,7 +78,7 @@ SPI is the security parameter index, a nonce chosen by sender to identify the
 (unidirectional) security association.
 
      len
-       4  ZERO
+       4  ZERO (special SPI = 0 denotes handshake packet)
 [A]    4  header
 [A]    4  SPI
 [A]    ?  ECDH ephemeral public key
