@@ -12,12 +12,12 @@ Note: For details on the SN_HEADER see FORMATS section
 Joining the Network is done by a 4-way handshake with the supernode. The first
 two packets are used for a DH Exchange, the second two to exchange information.
 
-A -> S:	pre-handshake 
+A -> S:	pre-handshake
 S -> A: pre-handshake ack
 A -> S: handshake
 S -> A: handshake ack
 A -> S: payload packet: SN_HEADER(supernode_register:),
-                        A_MAC,A_N2N_IP, A_LOCAL_SOCK
+                        A_MAC, A_N2N_IP
 S -> A: payload packet: SN_HEADER(supernode_register:ACK), A_PUB_SOCK
 
 2. Supernode keep-alive
@@ -59,8 +59,6 @@ B -> A: holepunch packet
 
 A -> B: payload packet: DATA
 
-7. Rekeying:
-?
 
 DECODING
 --------
