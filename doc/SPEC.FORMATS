@@ -20,8 +20,8 @@ supernode
    0 ! Version       ! Crypt-Version ! Packet Type   ! Flags         !
      +---------------+---------------+---------------+---------------+
 
-Packet Types: supernode_register, keep_alive, address_resolution,
-	      edge_connect, edge_resume
+Packet Types: supernode-register, keep-alive, address-resolution,
+	      edge-connect, edge-resume
 Flags: ACK (acknowledge)
 
 

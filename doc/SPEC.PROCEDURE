@@ -2,53 +2,50 @@ Note: For details on the SN_HEADER see SPEC.FORMATS
 
 1. Joining the Network
 
-Joining the Network is done by a 4-way handshake with the supernode. The first
+Joining the Network is done by a 6-way handshake with the supernode. The first
 two packets are used for a DH Exchange, the second two to exchange information.
 
 A -> S:	pre-handshake
 S -> A: pre-handshake ack
 A -> S: handshake
 S -> A: handshake ack
-A -> S: payload packet: SN_HEADER(supernode_register:),
-                        A_MAC, A_N2N_IP
-S -> A: payload packet: SN_HEADER(supernode_register:ACK), A_PUB_SOCK
+A -> S: payload packet: SN_HEADER(supernode-register:), A_MAC, A_N2N_IP
+S -> A: payload packet: SN_HEADER(supernode-register:ACK), A_PUB_SOCK
 
 2. Supernode keep-alive
 
-A -> S: payload packet: SN_HEADER(keep_alive:)
-S -> A: payload packet: SN_HEADER(keep_alive:ACK)
+A -> S: payload packet: SN_HEADER(keep-alive:)
+S -> A: payload packet: SN_HEADER(keep-alive:ACK)
 
 3. ARP requests
 
-A -> S: payload packet: SN_HEADER(address_resolution:),    B_IP
-S -> A: payload packet: SN_HEADER(address_resolution:ACK), B_IP, B_MAC
+A -> S: payload packet: SN_HEADER(address-resolution:),    B_IP
+S -> A: payload packet: SN_HEADER(address-resolution:ACK), B_IP, B_MAC
 
 4. Establishing p2p connection to another edge
 
-A -> S: payload packet: SN_HEADER(edge_connect:), SPI (Source), B_MAC,
+A -> S: payload packet: SN_HEADER(edge-connect:), SPI (Source), B_MAC,
                         A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
-S -> B: payload packet: SN_HEADER(edge_connect:), SPI (Source), B_MAC,
+S -> B: payload packet: SN_HEADER(edge-connect:), SPI (Source), B_MAC,
                         A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
 B -> A: holepunch packet (will usually get lost)
-B -> S: payload packet: SN_HEADER(edge_connect:ACK), SPI (Source), A_MAC,
+B -> S: payload packet: SN_HEADER(edge-connect:ACK), SPI (Source), A_MAC,
                         B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK
-S -> A: payload packet: SN_HEADER(edge_connect:ACK), SPI (Source), A_MAC,
+S -> A: payload packet: SN_HEADER(edge-connect:ACK), SPI (Source), A_MAC,
                         B_Timeout, B_PUB_SOCK, B_LOCAL_SOCK
 
 A -> B: handshake
 B -> A: handshake ack
-(final acknowledgement?)
 
 5. Resume established connections with timeout for p2p hole
 
-A -> S: payload packet: SN_HEADER(edge_resume:), B_MAC,
+A -> S: payload packet: SN_HEADER(edge-resume:), B_MAC,
                 A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
-S -> B: payload packet: SN_HEADER(edge_resume:), B_MAC,
+S -> B: payload packet: SN_HEADER(edge-resume:), B_MAC,
                 A_Timeout, A_PUB_SOCK, A_LOCAL_SOCK
 B -> A: holepunch packet
-(alternatively use end-to-end key here?)
 
 6. Data packets:
 
-A -> B: payload packet: DATA
-
+A -> B: payload packet: DATA (as received from tap interface stripped of first
+                12 Byte of the Ethernet frame -- src and dst mac)
