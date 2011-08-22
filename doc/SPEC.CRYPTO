@@ -21,14 +21,14 @@ Other cryptographic protocol considerations will be discussed afterwards.
 pre-handshake
 =============
 
+SPI negotiation: replay protection, liveliness
+
      len
-       4  ZERO (special SPI = 0 denotes handshake packet)
-[A]    4  header
-[A]    8  community
-[A]    4  SPI (Destination)
-[A]    4  SPI (Source)
-      48  HMAC_SALT
-      24  HMAC_TAG
+       4  ZERO (special SPI = 0 denotes non-payload packet)
+       4  header
+       8  community
+       4  SPI (Destination)
+       4  SPI (Source)
 
 SPI (Source) is chosen by the sender. The sender expects the receiver to use
 the SPI (Source) value as identifier for all future packets. If the
@@ -36,7 +36,9 @@ SPI the receiver expects is known, it will be put in the SPI (Destination)
 field. Otherwise this will be zero.
 
 The same packet is used in both directions (on return with the ACK-Flag set in
-the header)
+the header).
+
+This packet type does not need to be authenticated.
 
 
 handshake
@@ -46,7 +48,7 @@ SPI is the security parameter index, a nonce chosen by sender to identify the
 (unidirectional) security association.
 
      len
-       4  ZERO (special SPI = 0 denotes handshake packet)
+       4  ZERO (special SPI = 0 denotes non-payload packet)
 [A]    4  header
 [A]    4  SPI
 [A]    ?  ECDH ephemeral public key
@@ -69,23 +71,6 @@ after the handshake:
 Both parties compute the session keys using the ephemeral public keys, the key
 derivation function and the KDF_SALT. These session keys form the security
 associations (SA) identified by the SPI.
-
-
-handshake syn-ack
-=================
-
-SPI is the security parameter index, a nonce chosen by sender to identify the
-(unidirectional) security association.
-
-     len
-       4  ZERO (special SPI = 0 denotes handshake packet)
-[A]    4  header
-[A]    4  SPI
-[A]    ?  ECDH ephemeral public key
-[A]   48  AEAD_KDF_SALT
-      48  HMAC_KDF_SALT
-      24  HMAC_TAG
-
 
 
 payload packet
@@ -117,10 +102,11 @@ additionally authenticated data.
 hole punch packet
 =================
 
-not yet specified. TODO
+No data, no authentication.
 
      len
-       ?  TODO
+       4  ZERO (special SPI = 0 denotes non-payload packet)
+       4  header [holepunch]
 
 
 other goals

@@ -1,0 +1,26 @@
+HEADER:
+
+The header is sent for all non-payload packets after 4 ZERO-bytes
+
+      0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+     +---------------+---------------+---------------+---------------+
+   0 ! Version                       ! Packet Type   ! Flags         !
+     +---------------+---------------+---------------+---------------+
+
+Packet Types: pre-handshake, handshake, holepunch
+Flags: ACK (acknowledge)
+
+SN_HEADER:
+
+the SN header is sent for all payload packets going to or coming from the
+supernode
+
+      0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+     +---------------+---------------+---------------+---------------+
+   0 ! Version                       ! Packet Type   ! Flags         !
+     +---------------+---------------+---------------+---------------+
+
+Packet Types: supernode-register, keep-alive, address-resolution,
+	      edge-connect, edge-resume
+Flags: ACK (acknowledge)
+

@@ -1,0 +1,86 @@
+EDGE
+====
+
+Read first four byte to Integer SPI
+
+SPI == 0: //special SPI; this is a non-payload packet
+  Parse header, check version (if wrong: discard)
+  switch(packet type)
+    pre-handshake:
+      discard (this is handled separatly on startup)
+    handshake:
+      HMAC check (if wrong: discard)
+      find_peer_by_spi (if not present: discard)
+      perform DH operation, save key
+      send handshake ack
+      set_peer_ready
+    handshake ack:
+      HMAC check (if wrong: discard)
+      find_peer_by_spi (if not present: discard)
+      perform DH operation, save key
+      set_peer_ready
+    holepunch packet:
+      discard
+      
+SPI != 0: //this is a payload packet
+  find peer P associated with SPI (if not present: discard)
+  check and decrypt payload to PL (if failed: discard)
+  if SPI == supernode:
+    parse SN_HEADER, check version (if bad: discard)
+    switch(packet type)
+      supernode-register:
+        discard (this is handled separatly on startup)
+      keep-alive:
+        discard
+      address-resolution:
+        check ack flag (else:discard)
+        assemble reply to arp request, hand to tap interface
+      edge-connect:
+        save node information
+        if ack flag:
+          send handshake
+        else:
+          save node information
+      edge-resume:
+        find node by mac
+        check node information, update if necessary
+        send holepunch packet
+  if SPI != SUPERNODE:
+    assemble ethernet frame with payload PL
+    hand over to tap device
+
+
+SUPERNODE
+=========
+
+1. Read first four byte to Integer SPI
+SPI == NULL:
+  Parse header, check version
+  switch(packet type):
+    pre-handshake:
+      if ack: discard
+      allocate new spi
+      send pre-hanshake ack
+    handshake:
+      if ack: discard
+      HMAC check (if wrong: discard)
+      find_peer_by_spi (if not present: discard)
+      perform DH operation, save key
+      send handshake ack
+    holepunch:
+      discard
+SPI != NULL:
+  find peer P associated with SPI (else: discard)
+  check (throw away if bad) & decrypt payload to PL
+  decode SN_HEADER
+  switch(packet type):
+    supernode-register:
+      if ack: discard
+      save client infos
+      send supernode-register ack
+    address-resolution:
+      if ack: discard
+      lookup mac
+      send address-resolution ack
+    default: (keep-alive, edge-connect, edge-resume)
+      discard

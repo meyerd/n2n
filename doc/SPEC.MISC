@@ -1,0 +1,32 @@
+MTU:
+====
+
+The protocol is designed to keep the MTU of the TAP-Interface as high as
+possible. The overhead to payload-packets by the N2N Protocol is as follows
+(lengths are noted in octets):
+
+4  SPI
+12 AEAD_IV
+16 AEAD_ICV
+-----------
+32 Total
+
+Additionally, since a TAP-Interface is used, the Ethernet Header usually
+imposes an overhead of 18 bytes. Since the first 12 bytes are stripped by n2n
+before sending, this imposes 6 bytes of overhead
+TODO: is Frame check sequence sent? if not: -4
+
+The last part of the overhead that has to be considered for the MTU is the
+outer IP header. This can be assumed 20 bytes for IPv4 and 40 bytes for IPv6
+(what about special IP header options?)
+
+The Total overhead is therefore:
+IPv4: 32 + 6 + 20 = 58 octets
+IPv6: 32 + 6 + 40 = 78 octets
+
+Assuming an outgoing MTU of 1500, this results in a 3,87% (IPv4) / 5,20% (IPv6)
+relative overhead
+
+Denoting the outinging interface's MTU as n, the MTU of the TAP interface hast
+to be set to:
+n - overhead
