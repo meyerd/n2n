@@ -24,7 +24,7 @@ pre-handshake
 SPI negotiation: replay protection, liveliness
 
      len
-       4  ZERO (special SPI = 0 denotes handshake packet)
+       4  ZERO (special SPI = 0 denotes non-payload packet)
        4  header
        8  community
        4  SPI (Destination)
@@ -71,23 +71,6 @@ after the handshake:
 Both parties compute the session keys using the ephemeral public keys, the key
 derivation function and the KDF_SALT. These session keys form the security
 associations (SA) identified by the SPI.
-
-
-handshake syn-ack
-=================
-
-SPI is the security parameter index, a nonce chosen by sender to identify the
-(unidirectional) security association.
-
-     len
-       4  ZERO (special SPI = 0 denotes non-payload packet)
-[A]    4  header
-[A]    4  SPI
-[A]    ?  ECDH ephemeral public key
-[A]   48  AEAD_KDF_SALT
-      48  HMAC_KDF_SALT
-      24  HMAC_TAG
-
 
 
 payload packet
