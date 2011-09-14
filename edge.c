@@ -1776,7 +1776,6 @@ static void readFromIPSocket(n2n_edge_t * eee)
     ssize_t recvlen;
     size_t rem;
     size_t idx;
-    size_t msg_type;
     struct sockaddr_in sender_sock;
     n2n_sock_t sender;
     n2n_sock_t * orig_sender = NULL;
@@ -1835,12 +1834,40 @@ static void readFromIPSocket(n2n_edge_t * eee)
 
     now = time(NULL);
 
-    msg_type = cmn.pc; /* packet code */
+    if(cmn->spi == 0) {
+        // non-payload
+        // check version
+        if(cmn->version_major == N2N_PROTOCOL_VERSION_MAJOR && cmn->version_minor == N2N_PROTOCOL_VERSION_MINOR)
+            switch(cmn->pc) {
+            case n2n_pre_handshake:
+                // discard
+                break;
+            case n2n_handshake:
 
-    if (0 == memcmp(cmn.community, eee->community_name, N2N_COMMUNITY_SIZE)) {
+                break;
+            case n2n_handshake_ack:
+
+                break;
+            case n2n_holepunch:
+                // discard
+                break;
+            default:
+                traceEvent(TRACE_WARNING, "Unable to handle packet type %d: ignored", (signed int)cmn->pc);
+                break;
+            }
+        } else {
+            traceEvent(TRACE_WARNING, "Unsupported version packed received %d.%d: ignored", cmn->version_major, cmn->version_minor);
+        }
+    } else {
+        // payload packet
+
+    }
+
+
+    /*if (0 == memcmp(cmn.community, eee->community_name, N2N_COMMUNITY_SIZE)) {
         switch (msg_type) {
         case MSG_TYPE_PACKET:
-            /* process PACKET */
+             process PACKET
             decode_PACKET(&pkt, &cmn, udp_buf, &rem, &idx);
 
             traceEvent(TRACE_INFO, "Rx PACKET from %s (%s)",
@@ -1875,7 +1902,7 @@ static void readFromIPSocket(n2n_edge_t * eee)
 
             break;
         case MSG_TYPE_REGISTER:
-            /* Another edge is registering with us */
+             Another edge is registering with us
             decode_REGISTER( &reg, &cmn, udp_buf, &rem, &idx );
 
             traceEvent(TRACE_INFO,
@@ -1896,7 +1923,7 @@ static void readFromIPSocket(n2n_edge_t * eee)
             send_register_ack(eee, orig_sender, &reg);
             break;
         case MSG_TYPE_REGISTER_ACK:
-            /* Peer edge is acknowledging our register request */
+             Peer edge is acknowledging our register request
 
             decode_REGISTER_ACK(&ra, &cmn, udp_buf, &rem, &idx);
 
@@ -1910,7 +1937,7 @@ static void readFromIPSocket(n2n_edge_t * eee)
                        sock_to_cstr(sockbuf1, &sender),
                        sock_to_cstr(sockbuf2, orig_sender));
 
-            /* Move from pending_peers to known_peers; ignore if not in pending. */
+             Move from pending_peers to known_peers; ignore if not in pending.
             set_peer_operational(eee, ra.srcMac, &sender);
             break;
         case MSG_TYPE_REGISTER_SUPER_ACK:
@@ -1936,15 +1963,15 @@ static void readFromIPSocket(n2n_edge_t * eee)
                     eee->last_p2p = now;
                     eee->last_sup = now;
                     eee->sn_wait = 0;
-                    eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
+                    eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;  refresh because we got a response
 
-                    /* REVISIT: store sn_back */
-                    /* don't adjust lifetime according to supernode - this value should be specified
+                     REVISIT: store sn_back
+                     don't adjust lifetime according to supernode - this value should be specified
                      * by the client (because dependent on NAT/firewall) (lukas) 
                     eee->holepunch_interval = rsa.lifetime;
                     eee->holepunch_interval = MAX( eee->holepunch_interval, REGISTER_SUPER_INTERVAL_MIN );
                     eee->holepunch_interval = MIN( eee->holepunch_interval, REGISTER_SUPER_INTERVAL_MAX );
-                     */
+
                 } else {
                     traceEvent(TRACE_WARNING, "Rx REGISTER_SUPER_ACK with wrong or old cookie.");
                 }
@@ -1953,14 +1980,14 @@ static void readFromIPSocket(n2n_edge_t * eee)
             }
             break;
         default:
-            /* Not a known message type */
+             Not a known message type
             traceEvent(TRACE_WARNING, "Unable to handle packet type %d: ignored", (signed int)msg_type);
             break;
-        } /* end switch(msg_type) */
-        } /* if (community match) */ else {
+        }  end switch(msg_type)
+        }  if (community match)  else {
             traceEvent(TRACE_WARNING, "Received packet with invalid community");
-        }
-    }
+       }*/
+}
 
 /* ***************************************************** */
 

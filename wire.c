@@ -115,15 +115,19 @@ const uint8_t * base, size_t * rem, size_t * idx)
 
 int encode_common(uint8_t * base, size_t * idx, const n2n_common_t * common)
 {
-    uint16_t flags = 0;
-    encode_uint8(base, idx, N2N_PKT_VERSION);
-    encode_uint8(base, idx, common->ttl);
+    n2n_flags_t flags = 0;
 
-    flags = common->pc & N2N_FLAGS_TYPE_MASK;
-    flags |= common->flags & N2N_FLAGS_BITS_MASK;
+    encode_uint32(base, idx, common->spi);
+    if(common->spi == 0) {
+        // non payload packet, encode header
+        encode_uint8(base, idx, common->version_major);
+        encode_uint8(base, idx, common->version_minor);
 
-    encode_uint16(base, idx, flags);
-    encode_buf(base, idx, common->community, N2N_COMMUNITY_SIZE);
+        flags = common->pc & N2N_FLAGS_TYPE_MASK;
+        flags |= common->flags & N2N_FLAGS_BITS_MASK;
+
+        encode_uint16(base, idx, flags);
+    }
 
     return -1;
 }
@@ -132,19 +136,17 @@ int decode_common(n2n_common_t * out, const uint8_t * base, size_t * rem,
         size_t * idx)
 {
     size_t idx0 = *idx;
-    uint8_t dummy = 0;
-    decode_uint8(&dummy, base, rem, idx);
 
-    if (N2N_PKT_VERSION != dummy) {
-        return -1;
+    decode_uint32(&(out->spi), base, rem, idx);
+    if(out->spi != 0) {
+        // payload packet
+    } else {
+        decode_uint8(&(out->version_major), base, rem, idx);
+        decode_uint8(&(out->version_minor), base, rem, idx);
+        decode_uint16(&(out->flags), base, rem, idx);
+        out->pc = (out->flags & N2N_FLAGS_TYPE_MASK );
+        out->flags &= N2N_FLAGS_BITS_MASK;
     }
-
-    decode_uint8(&(out->ttl), base, rem, idx);
-    decode_uint16(&(out->flags), base, rem, idx);
-    out->pc = (out->flags & N2N_FLAGS_TYPE_MASK );
-    out->flags &= N2N_FLAGS_BITS_MASK;
-
-    decode_buf(out->community, N2N_COMMUNITY_SIZE, base, rem, idx);
 
     return (*idx - idx0);
 }

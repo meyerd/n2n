@@ -23,7 +23,8 @@
 #include <sys/socket.h> /* AF_INET and AF_INET6 */
 #endif /* #if defined(WIN32) */
 
-#define N2N_PKT_VERSION                 2
+#define N2N_PROTOCOL_VERSION_MAJOR      3
+#define N2N_PROTOCOL_VERSION_MINOR      0
 #define N2N_MAJOR_VERSION               3
 #define N2N_MINOR_VERSION               0
 #define N2N_DEFAULT_TTL                 2       /* can be forwarded twice at most */
@@ -42,16 +43,20 @@ typedef char n2n_sock_str_t[N2N_SOCKBUF_SIZE]; /* tracing string buffer */
 
 enum n2n_pc {
     n2n_ping = 0, /* Not used */
-    n2n_register = 1, /* Register edge to edge */
-    n2n_deregister = 2, /* Deregister this edge */
-    n2n_packet = 3, /* PACKET data content */
-    n2n_register_ack = 4, /* ACK of a registration from edge to edge */
-    n2n_register_super = 5, /* Register edge to supernode */
-    n2n_register_super_ack = 6, /* ACK from supernode to edge */
-    n2n_register_super_nak = 7, /* NAK from supernode to edge - registration refused */
-    n2n_federation = 8, /* Not used by edge */
-    n2n_peer_info = 9, /* Send info on a peer from sn to edge */
-    n2n_query_peer = 10 /* ask supernode for info on a peer */
+    n2n_pre_handshake,
+    n2n_pre_hanshake_ack,
+    n2n_handshake,
+    n2n_handshake_ack,
+    n2n_holepunch,
+    n2n_supernode_register,
+    n2n_supernode_register_ack,
+    n2n_address_resolution,
+    n2n_address_rsolution_ack,
+    n2n_keep_alive,
+    n2n_keep_alive_ack,
+    n2n_edge_connect,
+    n2n_edge_connect_ack,
+    n2n_edge_resume
 };
 
 typedef enum n2n_pc n2n_pc_t;
@@ -82,6 +87,8 @@ typedef enum n2n_pc n2n_pc_t;
 typedef uint16_t n2n_flags_t;
 typedef uint16_t n2n_transform_t; /* Encryption, compression type. */
 typedef uint32_t n2n_sa_t; /* security association number */
+typedef uint8_t n2n_version_major_t;
+typedef uint8_t n2n_version_minor_t;
 
 struct n2n_sock {
     uint8_t family; /* AF_INET or AF_INET6; or 0 if invalid */
@@ -110,10 +117,11 @@ struct n2n_preauth {
 
 struct n2n_common {
     /* int                 version; */
-    uint8_t ttl;
+    n2n_sa_t spi;
+    n2n_version_major_t version_major;
+    n2n_version_minor_t version_minor;
     n2n_pc_t pc;
     n2n_flags_t flags;
-    n2n_community_t community;
 };
 
 typedef struct n2n_common n2n_common_t;
