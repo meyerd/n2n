@@ -114,3 +114,4 @@ typedef struct tuntap_dev {
 int gettimeofday (struct timeval *tv, void* tz);
 
 #endif
+
