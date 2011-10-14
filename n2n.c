@@ -221,27 +221,29 @@ uint8_t is_multi_broadcast(const uint8_t * dest_mac)
 
 /* *********************************************** */
 
-char* msg_type2str(uint16_t msg_type)
+char* msg_type2str(n2n_pc_t msg_type)
 {
     switch (msg_type) {
-    case MSG_TYPE_REGISTER:
-        return ("MSG_TYPE_REGISTER");
-    case MSG_TYPE_DEREGISTER:
-        return ("MSG_TYPE_DEREGISTER");
-    case MSG_TYPE_PACKET:
-        return ("MSG_TYPE_PACKET");
-    case MSG_TYPE_REGISTER_ACK:
-        return ("MSG_TYPE_REGISTER_ACK");
-    case MSG_TYPE_REGISTER_SUPER:
-        return ("MSG_TYPE_REGISTER_SUPER");
-    case MSG_TYPE_REGISTER_SUPER_ACK:
-        return ("MSG_TYPE_REGISTER_SUPER_ACK");
-    case MSG_TYPE_REGISTER_SUPER_NAK:
-        return ("MSG_TYPE_REGISTER_SUPER_NAK");
-    case MSG_TYPE_FEDERATION:
-        return ("MSG_TYPE_FEDERATION");
-    default:
-        return ("???");
+        case n2n_ping:
+            return "MSG_TYPE_PING";
+        case n2n_pre_handshake:
+            return "N2N_TYPE_PRE-HANDSHAKE";
+        case n2n_handshake:
+            return "N2N_TYPE_HANDSHAKE";
+        case n2n_holepunch:
+            return "N2N_TYPE_HOLEPUNCH";
+        case n2n_supernode_register:
+            return "N2N_TYPE_SUPERNODE-REGISTER";
+        case n2n_address_resolution:
+            return "N2N_TYPE_ADDRESS-RESOLUTION";
+        case n2n_keep_alive:
+            return "N2N_TYPE_KEEP-ALIVE";
+        case n2n_edge_connect:
+            return "N2N_TYPE_EDGE-CONNECT";
+        case n2n_edge_resume:
+            return "N2N_TYPE_EDGE-RESUME";
+        default:
+            return ("???");
     }
 
     return ("???");

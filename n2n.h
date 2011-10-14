@@ -258,7 +258,7 @@ extern char * sock_to_cstr(n2n_sock_str_t out, const n2n_sock_t * sock);
 extern int sock_equal(const n2n_sock_t * a, const n2n_sock_t * b);
 
 extern uint8_t is_multi_broadcast(const uint8_t * dest_mac);
-extern char* msg_type2str(uint16_t msg_type);
+extern char* msg_type2str(n2n_pc_t msg_type);
 extern void hexdump(const uint8_t * buf, size_t len);
 
 void print_n2n_version();
