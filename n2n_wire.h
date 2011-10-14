@@ -44,32 +44,22 @@ typedef char n2n_sock_str_t[N2N_SOCKBUF_SIZE]; /* tracing string buffer */
 enum n2n_pc {
     n2n_ping = 0, /* Not used */
     n2n_pre_handshake,
-    n2n_pre_hanshake_ack,
     n2n_handshake,
-    n2n_handshake_ack,
     n2n_holepunch,
     n2n_supernode_register,
-    n2n_supernode_register_ack,
     n2n_address_resolution,
-    n2n_address_rsolution_ack,
     n2n_keep_alive,
-    n2n_keep_alive_ack,
     n2n_edge_connect,
-    n2n_edge_connect_ack,
     n2n_edge_resume
 };
 
 typedef enum n2n_pc n2n_pc_t;
 
-/* for the additional_flags present in some non-PACKET types */
-#define N2N_AFLAGS_LOCAL_SOCKET         0x0001
+enum n2n_flags {
+    n2n_ack = 0x1
+};
 
-/* for the common header section */
-#define N2N_FLAGS_FROM_SUPERNODE        0x0020
-
-/* The bits in flag that are the packet type */
-#define N2N_FLAGS_TYPE_MASK             0x001f  /* 0 - 31 */
-#define N2N_FLAGS_BITS_MASK             0xffe0
+typedef enum n2n_flags n2n_flags_t;
 
 #define IPV4_SIZE                       4
 #define IPV6_SIZE                       16
