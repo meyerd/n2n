@@ -44,8 +44,8 @@ int main(int argc, char * argv[])
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     n2n_trans_op_t transop_null;
 
-    n2n_common_t cmn;
-    n2n_PACKET_t pkt;
+    /* n2n_common_t cmn; */
+    /* n2n_PACKET_t pkt; */
     n2n_community_t c;
 
     struct timeval t1;
@@ -53,8 +53,8 @@ int main(int argc, char * argv[])
 
     unsigned long int i;
     size_t n;
-    size_t idx;
-    size_t rem;
+    /* size_t idx; */
+    /* size_t rem; */
     ssize_t nw;
     unsigned long int tdiff;
 
@@ -71,11 +71,11 @@ int main(int argc, char * argv[])
         nw += transop_null.fwd(&transop_null, pktbuf + nw,
                 N2N_PKT_BUF_SIZE - nw, PKT_CONTENT, sizeof(PKT_CONTENT));
 
-        idx = 0;
-        rem = nw;
+        /* idx = 0; */
+        /* rem = nw; */
 
-        decode_common(&cmn, pktbuf, &rem, &idx);
-        decode_PACKET(&pkt, &cmn, pktbuf, &rem, &idx);
+        /* decode_common(&cmn, pktbuf, &rem, &idx); */
+        /* decode_PACKET(&pkt, &cmn, pktbuf, &rem, &idx); */
 
         if (0 == (i % 1000)) {
             fprintf(stderr, ".");
@@ -97,11 +97,11 @@ static ssize_t do_encode_packet(uint8_t * pktbuf, size_t bufsize,
         const n2n_community_t c)
 {
     /* n2n_mac_t destMac={0,1,2,3,4,5}; */
-    n2n_common_t cmn;
+    /* n2n_common_t cmn; */
     n2n_PACKET_t pkt;
     size_t idx;
 
-    memset(&cmn, 0, sizeof(cmn));
+    /* memset(&cmn, 0, sizeof(cmn)); */
     /*cmn.ttl = N2N_DEFAULT_TTL;
     cmn.pc = n2n_packet;
     cmn.flags = 0; // no options, not from supernode, no socket
@@ -110,7 +110,7 @@ static ssize_t do_encode_packet(uint8_t * pktbuf, size_t bufsize,
     memset(&pkt, 0, sizeof(pkt));
 
     idx = 0;
-    encode_PACKET(pktbuf, &idx, &cmn, &pkt);
+    /* encode_PACKET(pktbuf, &idx, &cmn, &pkt); */
     traceEvent(TRACE_DEBUG, "encoded PACKET header of size=%u", (unsigned int)idx);
 
     return idx;
