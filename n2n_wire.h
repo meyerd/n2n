@@ -74,7 +74,6 @@ typedef enum n2n_flags n2n_flags_t;
 #define N2N_EINVAL                      -3
 #define N2N_ENOSPACE                    -4
 
-typedef uint16_t n2n_flags_t;
 typedef uint16_t n2n_transform_t; /* Encryption, compression type. */
 typedef uint32_t n2n_sa_t; /* security association number */
 typedef uint8_t n2n_version_major_t;
