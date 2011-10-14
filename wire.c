@@ -113,44 +113,6 @@ const uint8_t * base, size_t * rem, size_t * idx)
     return decode_buf(out, N2N_MAC_SIZE, base, rem, idx);
 }
 
-int encode_common(uint8_t * base, size_t * idx, const n2n_common_t * common)
-{
-    n2n_flags_t flags = 0;
-
-    encode_uint32(base, idx, common->spi);
-    if(common->spi == 0) {
-        // non payload packet, encode header
-        encode_uint8(base, idx, common->version_major);
-        encode_uint8(base, idx, common->version_minor);
-
-        flags = common->pc & N2N_FLAGS_TYPE_MASK;
-        flags |= common->flags & N2N_FLAGS_BITS_MASK;
-
-        encode_uint16(base, idx, flags);
-    }
-
-    return -1;
-}
-
-int decode_common(n2n_common_t * out, const uint8_t * base, size_t * rem,
-        size_t * idx)
-{
-    size_t idx0 = *idx;
-
-    decode_uint32(&(out->spi), base, rem, idx);
-    if(out->spi != 0) {
-        // payload packet
-    } else {
-        decode_uint8(&(out->version_major), base, rem, idx);
-        decode_uint8(&(out->version_minor), base, rem, idx);
-        decode_uint16(&(out->flags), base, rem, idx);
-        out->pc = (out->flags & N2N_FLAGS_TYPE_MASK );
-        out->flags &= N2N_FLAGS_BITS_MASK;
-    }
-
-    return (*idx - idx0);
-}
-
 int encode_sock(uint8_t * base, size_t * idx, const n2n_sock_t * sock)
 {
     int retval = 0;

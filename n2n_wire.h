@@ -232,11 +232,6 @@ int encode_mac(uint8_t * base, size_t * idx, const n2n_mac_t m);
 int decode_mac(uint8_t * out, /* of size N2N_MAC_SIZE. This clearer than passing a n2n_mac_t */
 const uint8_t * base, size_t * rem, size_t * idx);
 
-int encode_common(uint8_t * base, size_t * idx, const n2n_common_t * common);
-
-int decode_common(n2n_common_t * out, const uint8_t * base, size_t * rem,
-        size_t * idx);
-
 int encode_sock(uint8_t * base, size_t * idx, const n2n_sock_t * sock);
 
 int decode_sock(n2n_sock_t * sock, const uint8_t * base, size_t * rem,
