@@ -175,7 +175,7 @@ int encode_supernode_register(uint8_t * base, size_t * idx,
         retval += encode_mac(base, idx, reg->syn.a_mac);
         retval += encode_ip(base, idx, reg->syn.a_n2n_ip);
     } else {
-        retval += encode_sock(base, idx, reg->ack.a_pub_sock);
+        retval += encode_sock(base, idx, &reg->ack.a_pub_sock);
     }
     return retval;
 }
@@ -188,166 +188,8 @@ int decode_supernode_register(const uint8_t * base, size_t * idx, size_t * rem,
         retval += decode_mac(base, idx, rem, reg->syn.a_mac);
         retval += decode_ip(base, idx, rem, reg->syn.a_n2n_ip);
     } else {
-        retval += decode_sock(base, idx, rem, reg->syn.a_n2n_ip);
+        retval += decode_sock(base, idx, rem, &reg->ack.a_pub_sock);
     }
-    return retval;
-}
-
-int encode_REGISTER_SUPER(uint8_t * base, size_t * idx,
-        const n2n_common_t * common, const n2n_REGISTER_SUPER_t * reg)
-{
-    int retval = 0;
-    retval += encode_common(base, idx, common);
-    retval += encode_uint16(base, idx, reg->aflags);
-    retval += encode_uint16(base, idx, reg->timeout);
-    retval += encode_buf(base, idx, reg->cookie, N2N_COOKIE_SIZE);
-    retval += encode_mac(base, idx, reg->edgeMac);
-    retval += encode_uint16(base, idx, 0); /* NULL auth scheme */
-    retval += encode_uint16(base, idx, 0); /* No auth data */
-    if (reg->aflags & N2N_AFLAGS_LOCAL_SOCKET)
-        retval += encode_sock(base, idx, &(reg->local_sock));
-
-    return retval;
-}
-
-int decode_REGISTER_SUPER(const uint8_t * base, size_t * idx, size_t * rem,
-        n2n_REGISTER_SUPER_t * reg,
-        const n2n_common_t * cmn /* info on how to interpret it */ )
-{
-    size_t retval = 0;
-    memset(reg, 0, sizeof(n2n_REGISTER_SUPER_t));
-    retval += decode_uint16(base, idx, rem, &(reg->aflags));
-    retval += decode_uint16(base, idx, rem, &(reg->timeout));
-    retval += decode_buf(base, idx, rem, reg->cookie, N2N_COOKIE_SIZE);
-    retval += decode_mac(base, idx, rem, reg->edgeMac);
-    retval += decode_uint16(base, idx, rem, &(reg->auth.scheme));
-    retval += decode_uint16(base, idx, rem, &(reg->auth.toksize));
-    retval += decode_buf(base, idx, rem, reg->auth.token, reg->auth.toksize);
-    if (reg->aflags & N2N_AFLAGS_LOCAL_SOCKET)
-        retval += decode_sock(base, idx, rem, &(reg->local_sock));
-
-    return retval;
-}
-
-int encode_PEER_INFO(uint8_t * base, size_t * idx, const n2n_common_t * common,
-        const n2n_PEER_INFO_t * pi)
-{
-    int retval = 0;
-    retval += encode_common(base, idx, common);
-    retval += encode_uint16(base, idx, pi->aflags);
-    retval += encode_uint16(base, idx, pi->timeout);
-    retval += encode_mac(base, idx, pi->mac);
-    retval += encode_sock(base, idx, pi->sockets);
-    if (pi->aflags & N2N_AFLAGS_LOCAL_SOCKET)
-        retval += encode_sock(base, idx, pi->sockets + 1);
-
-    return retval;
-}
-
-int decode_PEER_INFO(const uint8_t * base, size_t * idx, size_t * rem,
-        n2n_PEER_INFO_t * pi,
-        const n2n_common_t * cmn /* info on how to interpret it */ )
-{
-    size_t retval = 0;
-    memset(pi, 0, sizeof(n2n_PEER_INFO_t));
-    retval += decode_uint16(base, idx, rem, &(pi->aflags));
-    retval += decode_uint16(base, idx, rem, &(pi->timeout));
-    retval += decode_mac(base, idx, rem, pi->mac);
-    retval += decode_sock(base, idx, rem, pi->sockets);
-    if (pi->aflags & N2N_AFLAGS_LOCAL_SOCKET
-        )
-        retval += decode_sock(base, idx, rem, pi->sockets + 1);
-
-    return retval;
-}
-
-int encode_QUERY_PEER(uint8_t * base, size_t * idx, const n2n_common_t * common,
-        const n2n_QUERY_PEER_t * qp)
-{
-    int retval = 0;
-    retval += encode_common(base, idx, common);
-    retval += encode_mac(base, idx, qp->srcMac);
-    retval += encode_mac(base, idx, qp->targetMac);
-
-    return retval;
-}
-
-int decode_QUERY_PEER(const uint8_t * base, size_t * idx, size_t * rem,
-        n2n_QUERY_PEER_t * qp,
-        const n2n_common_t * cmn /* info on how to interpret it */)
-{
-    size_t retval = 0;
-    memset(qp, 0, sizeof(n2n_QUERY_PEER_t));
-    retval += decode_mac(base, idx, rem, qp->srcMac);
-    retval += decode_mac(base, idx, rem, qp->targetMac);
-
-    return retval;
-}
-
-int encode_REGISTER_ACK(uint8_t * base, size_t * idx,
-        const n2n_common_t * common, const n2n_REGISTER_ACK_t * reg)
-{
-    int retval = 0;
-    retval += encode_common(base, idx, common);
-    retval += encode_buf(base, idx, reg->cookie, N2N_COOKIE_SIZE);
-    retval += encode_mac(base, idx, reg->dstMac);
-    retval += encode_mac(base, idx, reg->srcMac);
-
-    return retval;
-}
-
-int decode_REGISTER_ACK(const uint8_t * base, size_t * idx, size_t * rem,
-        n2n_REGISTER_ACK_t * reg,
-        const n2n_common_t * cmn /* info on how to interpret it */ )
-{
-    size_t retval = 0;
-    memset(reg, 0, sizeof(n2n_REGISTER_ACK_t));
-    retval += decode_buf(base, idx, rem, reg->cookie, N2N_COOKIE_SIZE);
-    retval += decode_mac(base, idx, rem, reg->dstMac);
-    retval += decode_mac(base, idx, rem, reg->srcMac);
-
-    return retval;
-}
-
-int encode_REGISTER_SUPER_ACK(uint8_t * base, size_t * idx,
-        const n2n_common_t * common, const n2n_REGISTER_SUPER_ACK_t * reg)
-{
-    int retval = 0;
-    retval += encode_common(base, idx, common);
-    retval += encode_buf(base, idx, reg->cookie, N2N_COOKIE_SIZE);
-    retval += encode_mac(base, idx, reg->edgeMac);
-    retval += encode_uint16(base, idx, reg->lifetime);
-    retval += encode_sock(base, idx, &(reg->sock));
-    retval += encode_uint8(base, idx, reg->num_sn);
-    if (reg->num_sn > 0) {
-        /* We only support 0 or 1 at this stage */
-        retval += encode_sock(base, idx, &(reg->sn_bak));
-    }
-
-    return retval;
-}
-
-int decode_REGISTER_SUPER_ACK(const uint8_t * base, size_t * idx, size_t * rem,
-        n2n_REGISTER_SUPER_ACK_t * reg,
-        const n2n_common_t * cmn, /* info on how to interpret it */ )
-{
-    size_t retval = 0;
-
-    memset(reg, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
-    retval += decode_buf(base, idx, rem, reg->cookie, N2N_COOKIE_SIZE);
-    retval += decode_mac(base, idx, rem, reg->edgeMac);
-    retval += decode_uint16(base, idx, rem, &(reg->lifetime));
-
-    /* Socket is mandatory in this message type */
-    retval += decode_sock(base, idx, rem, &(reg->sock));
-
-    /* Following the edge socket are an array of backup supernodes. */
-    retval += decode_uint8(base, idx, rem, &(reg->num_sn));
-    if (reg->num_sn > 0) {
-        /* We only support 0 or 1 at this stage */
-        retval += decode_sock(base, idx, rem, &(reg->sn_bak));
-    }
-
     return retval;
 }
 
@@ -369,27 +211,6 @@ int fill_sockaddr(struct sockaddr * addr, size_t addrlen,
     return retval;
 }
 
-int encode_PACKET(uint8_t * base, size_t * idx, const n2n_common_t * common,
-        const n2n_PACKET_t * pkt)
-{
-    int retval = 0;
-    retval += encode_common(base, idx, common);
-    retval += encode_uint16(base, idx, pkt->transform);
-
-    return retval;
-}
-
-int decode_PACKET(const uint8_t * base, size_t * idx, size_t * rem,
-        n2n_PACKET_t * pkt,
-        const n2n_common_t * cmn /* info on how to interpret it */ )
-{
-    size_t retval = 0;
-    memset(pkt, 0, sizeof(n2n_PACKET_t));
-    retval += decode_uint16(base, idx, rem, &(pkt->transform));
-
-    return retval;
-}
-
 int encode_HEADER(uint8_t * base, size_t * idx, const n2n_HEADER_t *hdr)
 {
     encode_uint8(base, idx, hdr->version_major);
@@ -404,8 +225,8 @@ int decode_HEADER(const uint8_t * base, size_t * idx, size_t * rem,
 {
     decode_uint8(base, idx, rem, &hdr->version_major);
     decode_uint8(base, idx, rem, &hdr->version_minor);
-    decode_uint8(base, idx, rem, &hdr->packet_type);
-    decode_uint8(base, idx, rem, &hdr->flags);
+    decode_uint8(base, idx, rem, (uint8_t *) &hdr->pc);
+    decode_uint8(base, idx, rem, (uint8_t *) &hdr->flags);
     return 0;
 }
 

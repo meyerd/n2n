@@ -237,6 +237,11 @@ int encode_buf(uint8_t * base, size_t * idx, const void * p, size_t s);
 int decode_buf(const uint8_t * base, size_t * idx, size_t * rem,
         uint8_t * out, size_t bufsize);
 
+int encode_ip(uint8_t * base, size_t * idx, const n2n_ip_t ip);
+
+int decode_ip(const uint8_t * base, size_t * idx, size_t * rem,
+        n2n_ip_t ip);
+
 int encode_mac(uint8_t * base, size_t * idx, const n2n_mac_t m);
 
 int decode_mac(const uint8_t * base, size_t * idx, size_t * rem,
@@ -254,48 +259,8 @@ int encode_supernode_register(uint8_t * base, size_t * idx,
 int decode_supernode_register(const uint8_t * base, size_t * idx, size_t * rem,
         int ack, n2n_supernode_register_t * reg);
 
-int encode_REGISTER_SUPER(uint8_t * base, size_t * idx,
-        const n2n_common_t * common, const n2n_REGISTER_SUPER_t * reg);
-
-int decode_REGISTER_SUPER(const uint8_t * base, size_t * idx, size_t * rem,
-        n2n_REGISTER_SUPER_t * pkt, const n2n_common_t * cmn);
-
-int encode_REGISTER_ACK(uint8_t * base, size_t * idx,
-        const n2n_common_t * common, const n2n_REGISTER_ACK_t * reg);
-
-int decode_REGISTER_ACK(const uint8_t * base, size_t * idx, size_t * rem,
-        n2n_REGISTER_ACK_t * pkt, const n2n_common_t * cmn);
-
-int encode_REGISTER_SUPER_ACK(uint8_t * base, size_t * idx,
-        const n2n_common_t * cmn, const n2n_REGISTER_SUPER_ACK_t * reg);
-
-int decode_REGISTER_SUPER_ACK(const uint8_t * base, size_t * idx, size_t * rem,
-        n2n_REGISTER_SUPER_ACK_t * reg,
-        const n2n_common_t * cmn /* info on how to interpret it */ );
-
 int fill_sockaddr(struct sockaddr * addr, size_t addrlen,
         const n2n_sock_t * sock);
-
-int encode_PACKET(uint8_t * base, size_t * idx, const n2n_common_t * common,
-        const n2n_PACKET_t * pkt);
-
-int decode_PACKET(const uint8_t * base, size_t * idx, size_t * rem,
-        n2n_PACKET_t * pkt, const n2n_common_t * cmn /* info on how to
-                                                        interpret it */ );
-
-int encode_PEER_INFO(uint8_t * base, size_t * idx, const n2n_common_t * common,
-        const n2n_PEER_INFO_t * pi);
-
-int decode_PEER_INFO(const uint8_t * base, size_t * idx, size_t * rem,
-        n2n_PEER_INFO_t * pi, const n2n_common_t * cmn /* info on how to
-                                                          interpret it */ );
-
-int encode_QUERY_PEER(uint8_t * base, size_t * idx, const n2n_common_t * common,
-        const n2n_QUERY_PEER_t * qp);
-
-int decode_QUERY_PEER(const uint8_t * base, size_t * idx, size_t * rem,
-        n2n_QUERY_PEER_t * qp, const n2n_common_t * cmn /* info on how to
-                                                           interpret it */ );
 
 int encode_HEADER(uint8_t * base, size_t * idx, const n2n_HEADER_t *hdr);
 int decode_HEADER(const uint8_t * base, size_t * idx, size_t * rem,
