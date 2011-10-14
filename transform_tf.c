@@ -185,11 +185,11 @@ static int transop_decode_twofish(n2n_trans_op_t * arg, uint8_t * outbuf,
         uint8_t tf_enc_ver = 0;
 
         /* Get the encoding version to make sure it is supported */
-        decode_uint8(&tf_enc_ver, inbuf, &rem, &idx);
+        decode_uint8(inbuf, &idx, &rem, &tf_enc_ver);
 
         if (N2N_TWOFISH_TRANSFORM_VERSION == tf_enc_ver) {
             /* Get the SA number and make sure we are decrypting with the right one. */
-            decode_uint32(&sa_rx, inbuf, &rem, &idx);
+            decode_uint32(inbuf, &idx, &rem, &sa_rx);
 
             sa_idx = twofish_find_sa(priv, sa_rx);
             if (sa_idx >= 0) {

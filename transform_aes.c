@@ -222,11 +222,11 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
         uint8_t aes_enc_ver=0;
 
         /* Get the encoding version to make sure it is supported */
-        decode_uint8(&aes_enc_ver, inbuf, &rem, &idx);
+        decode_uint8(inbuf, &idx, &rem, &aes_enc_ver);
 
         if (N2N_AES_TRANSFORM_VERSION == aes_enc_ver) {
             /* Get the SA number and make sure we are decrypting with the right one. */
-            decode_uint32(&sa_rx, inbuf, &rem, &idx);
+            decode_uint32(inbuf, &idx, &rem, &sa_rx);
 
             sa_idx = aes_find_sa(priv, sa_rx);
             if (sa_idx >= 0) {
