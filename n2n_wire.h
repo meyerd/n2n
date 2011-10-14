@@ -104,17 +104,6 @@ struct n2n_preauth {
     n2n_spi_t spi_src;
 };
 
-struct n2n_common {
-    /* int                 version; */
-    n2n_sa_t spi;
-    n2n_version_major_t version_major;
-    n2n_version_minor_t version_minor;
-    n2n_pc_t pc;
-    n2n_flags_t flags;
-};
-
-typedef struct n2n_common n2n_common_t;
-
 struct n2n_REGISTER {
     n2n_cookie_t cookie; /* Link REGISTER and REGISTER_ACK */
     n2n_mac_t srcMac; /* MAC of registering party */
@@ -203,8 +192,10 @@ struct n2n_QUERY_PEER {
 typedef struct n2n_QUERY_PEER n2n_QUERY_PEER_t;
 
 struct n2n_HEADER {
-    uint8_t packet_type;
-    uint8_t flags;
+    n2n_version_major_t version_major;
+    n2n_version_minor_t version_minor;
+    n2n_pc_t pc;
+    n2n_flags_t flags;
 };
 
 typedef struct n2n_HEADER n2n_HEADER_t;
