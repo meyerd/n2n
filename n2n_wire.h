@@ -34,8 +34,13 @@
 #define N2N_PKT_BUF_SIZE                2048
 #define N2N_SOCKBUF_SIZE                64      /* string representation of INET or INET6 sockets */
 
+#define IPV4_SIZE                       4
+#define IPV6_SIZE                       16
+
 typedef uint8_t  n2n_community_t[N2N_COMMUNITY_SIZE];
 typedef uint8_t  n2n_mac_t[N2N_MAC_SIZE];
+typedef uint8_t  n2n_ip_t[IPV4_SIZE]; /* currently only IPv4
+                                         address supported */
 typedef uint8_t  n2n_cookie_t[N2N_COOKIE_SIZE];
 typedef uint32_t n2n_spi_t;
 
@@ -60,9 +65,6 @@ enum n2n_flags {
 };
 
 typedef enum n2n_flags n2n_flags_t;
-
-#define IPV4_SIZE                       4
-#define IPV6_SIZE                       16
 
 #define ETH_FRAMEHDRSIZE                   14
 #define IP4_SRCOFFSET                   12
@@ -90,12 +92,6 @@ struct n2n_sock {
 
 typedef struct n2n_sock n2n_sock_t;
 
-/* currently only IPv4 address supported */
-struct n2n_ip {
-    uint8_t addr[IPV4_SIZE];
-};
-
-typedef struct n2n_ip n2n_ip_t;
 
 struct n2n_auth {
     uint16_t scheme; /* What kind of auth */
