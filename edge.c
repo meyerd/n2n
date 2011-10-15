@@ -101,7 +101,7 @@ struct n2n_edge {
     int local_sock_ena; /** > 0 if local_sock is enabled */
     int sn_wait; /**< Whether we are waiting for a supernode response. */
 
-    n2n_community_t community_name; /**< The community. 16 full octets. */
+    n2n_community_t community_name; /**< The community (hashed). */
     char keyschedule[N2N_PATHNAME_MAXLEN];
     int null_transop; /**< Only allowed if no key sources defined. */
 
@@ -957,52 +957,85 @@ static int initial_supernode_registration(n2n_edge_t *eee) {
     socklen_t sender_socklen;
     struct sockaddr_in sender_sock;
     uint8_t udp_buf[N2N_PKT_BUF_SIZE];
-    size_t trans_len;
+    uint8_t payload_buf[N2N_PKT_BUF_SIZE];
+    size_t trans_len, payload_len;
     struct timeval wait_time;
     fd_set socket_mask;
     int rc, tries, phase, next_phase;
-    uint32_t spi_self, spi_remote;
+    n2n_sa_t spi_self, spi_remote;
     n2n_HEADER_t hdr;
+    n2n_supernode_register_t sn_reg;
 
+    /* TODO: these value must come from proper sources (crypto engine) */
     spi_self = 0xAFFEEFFA; /* generate randomly */
-    spi_remote = 0xAFFEEFFA; /* only for key gen */
+    spi_remote = 0; /* not yet known */
+
+    memcpy(hdr.community, eee->community_name, N2N_COMMUNITY_SIZE);
 
     for (phase = 0; phase < 3; phase++) {
         next_phase = 0;
+
+        /* prepare packet */
+        trans_len = 0;
+        switch(phase) {
+        case 0:
+            /* build pre-handshake packet */
+            /* encode special SPI 0 */
+            encode_uint32(udp_buf, &trans_len, 0);
+            /* build HEADER */
+            hdr.pc = n2n_pre_handshake;
+            hdr.flags = 0x0;
+            /* encode HEADER */
+            encode_HEADER(udp_buf, &trans_len, &hdr);
+            /* encode community */
+            encode_buf(udp_buf, &trans_len, eee->community_name,
+                       N2N_COMMUNITY_SIZE);
+            /* encode destination spi (0) */
+            encode_uint32(udp_buf, &trans_len, spi_remote);
+            /* encode source spi */
+            encode_uint32(udp_buf, &trans_len, spi_self);
+            /* finished packet building */
+            break;
+        case 1:
+            /* build handshake packet*/
+            /* encode special SPI 0 */
+            encode_uint32(udp_buf, &trans_len, 0);
+            /* build HEADER */
+            hdr.pc = n2n_handshake;
+            hdr.flags = 0x0;
+            /* encode HEADER */
+            encode_HEADER(udp_buf, &trans_len, &hdr);
+            /* destination spi is now known (not 0) */
+            encode_uint32(udp_buf, &trans_len, spi_remote);
+            /* TODO:
+             * ECDH ephemeral public key
+             * AEAD_KDF_SALT
+             * HMAC_KDF_SALT
+             * HMAC_TAG */
+            break;
+        case 2:
+            /* build supernode-register packet */
+            /* this is a payload packet and needs to run through crypto
+             * engline */
+            payload_len = 0;
+            /*sn_reg.syn.a_mac;
+            sn_reg.syn.a_n2n_ip; */
+            encode_supernode_register(payload_buf, &payload_len, 0, &sn_reg);
+            break;
+        default:
+            break;
+        }
+
         for (tries = 0; tries < MAX_SUPERNODE_TRIES; tries++) {
-            trans_len = 0;
-            switch(phase) {
-            case 0:
-                /* build_packet */
-                /* Zero first 4 bytes */
-                memset(udp_buf, 0, 4);
-                trans_len += 4;
-                /* Build HEADER */
-                /*hdr.packet_type = n2n_pre_handshake;*/
-                hdr.flags = 0x0;
-                encode_HEADER(udp_buf, &trans_len, &hdr);
-
-                /* call to crypto engine: complete packet with HMAC_IV and HMAC */
-
-                sendto_sock(eee->udp_sock, udp_buf, trans_len, &eee->supernode);
-                /* send supernode pre-handshake */
-                break;
-            case 1:
-                /* send supernode handshake */
-                break;
-            case 2:
-                /* send supernode */
-                break;
-            default:
-                break;
-            }
-
+            /* (re)send packet */
+            sendto_sock(eee->udp_sock, udp_buf, trans_len, &eee->supernode);
             /* wait for return */
             wait_time.tv_sec = 5;
             wait_time.tv_usec = 0;
             FD_ZERO(&socket_mask);
             FD_SET(eee->udp_sock, &socket_mask);
-            rc = select(eee->udp_sock + 1, &socket_mask, NULL, NULL, &wait_time);
+            rc = select(eee->udp_sock + 1, &socket_mask,
+                        NULL, NULL, &wait_time);
             if (rc > 0) {
                 sender_socklen = sizeof(sender_sock);
                 trans_len = recvfrom(eee->udp_sock, udp_buf, N2N_PKT_BUF_SIZE,
@@ -2279,6 +2312,7 @@ int main(int argc, char* argv[])
         }
         case 'c': /* community as a string */
         {
+            /* TODO: needs to be hashed! */
             memset(eee.community_name, 0, N2N_COMMUNITY_SIZE);
             strncpy((char *)eee.community_name, optarg, N2N_COMMUNITY_SIZE);
             break;
