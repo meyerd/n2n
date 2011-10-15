@@ -1018,9 +1018,17 @@ static int initial_supernode_registration(n2n_edge_t *eee) {
             /* this is a payload packet and needs to run through crypto
              * engline */
             payload_len = 0;
-            /*sn_reg.syn.a_mac;
-            sn_reg.syn.a_n2n_ip; */
+            memcpy(sn_reg.syn.a_mac, eee->device.mac_addr, N2N_MAC_SIZE);
+            /* NOTE: though device.ip_addr is an uint32_t it is already
+             * stored in network byte order, memcpy is thus fine! */
+            /* TODO: IPv6 */
+            memcpy(sn_reg.syn.a_n2n_ip, &eee->device.ip_addr, IPV4_SIZE);
             encode_supernode_register(payload_buf, &payload_len, 0, &sn_reg);
+            /* prepare packet */
+            /* encode remote SPI */
+            encode_uint32(udp_buf, &trans_len, spi_remote);
+            /* TODO: call crypto engine for handling payload */
+
             break;
         default:
             break;
@@ -1030,6 +1038,7 @@ static int initial_supernode_registration(n2n_edge_t *eee) {
             /* (re)send packet */
             sendto_sock(eee->udp_sock, udp_buf, trans_len, &eee->supernode);
             /* wait for return */
+            /* TODO: set timeout using define */
             wait_time.tv_sec = 5;
             wait_time.tv_usec = 0;
             FD_ZERO(&socket_mask);
