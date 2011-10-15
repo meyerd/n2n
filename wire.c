@@ -114,6 +114,19 @@ int decode_mac(const uint8_t * base, size_t * idx, size_t * rem,
     return decode_buf(base, idx, rem, out, N2N_MAC_SIZE);
 }
 
+int encode_ip(uint8_t * base, size_t * idx, const n2n_ip_t ip)
+{
+    /* TODO: IPV6 */
+    return encode_buf(base, idx, ip, IPV4_SIZE);
+}
+
+int decode_ip(const uint8_t * base, size_t * idx, size_t * rem,
+        n2n_ip_t ip)
+{
+    /* TODO: IPV6 */
+    return decode_buf(base, idx, rem, ip, IPV4_SIZE);
+}
+
 int encode_sock(uint8_t * base, size_t * idx, const n2n_sock_t * sock)
 {
     int retval = 0;
