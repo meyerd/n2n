@@ -27,8 +27,8 @@
 #define N2N_PROTOCOL_VERSION_MINOR      0
 #define N2N_MAJOR_VERSION               3
 #define N2N_MINOR_VERSION               0
-#define N2N_DEFAULT_TTL                 2       /* can be forwarded twice at most */
-#define N2N_COMMUNITY_SIZE              16
+#define N2N_COMMUNITY_SIZE              8
+/* Warning: Builds with a different N2N_COMMUNITY_SIZE are incompatible! */
 #define N2N_MAC_SIZE                    6
 #define N2N_COOKIE_SIZE                 4
 #define N2N_PKT_BUF_SIZE                2048
