@@ -202,8 +202,6 @@ struct n2n_QUERY_PEER {
 typedef struct n2n_QUERY_PEER n2n_QUERY_PEER_t;
 
 struct n2n_HEADER {
-    n2n_version_major_t version_major;
-    n2n_version_minor_t version_minor;
     n2n_pc_t pc;
     n2n_flags_t flags;
 };

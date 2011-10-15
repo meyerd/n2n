@@ -213,8 +213,8 @@ int fill_sockaddr(struct sockaddr * addr, size_t addrlen,
 
 int encode_HEADER(uint8_t * base, size_t * idx, const n2n_HEADER_t *hdr)
 {
-    encode_uint8(base, idx, hdr->version_major);
-    encode_uint8(base, idx, hdr->version_minor);
+    encode_uint8(base, idx, N2N_MAJOR_VERSION);
+    encode_uint8(base, idx, N2N_MINOR_VERSION);
     encode_uint8(base, idx, hdr->pc);
     encode_uint8(base, idx, hdr->flags);
     return 0;
@@ -223,8 +223,14 @@ int encode_HEADER(uint8_t * base, size_t * idx, const n2n_HEADER_t *hdr)
 int decode_HEADER(const uint8_t * base, size_t * idx, size_t * rem,
         n2n_HEADER_t * hdr)
 {
-    decode_uint8(base, idx, rem, &hdr->version_major);
-    decode_uint8(base, idx, rem, &hdr->version_minor);
+    uint8_t major_version, minor_version;
+    decode_uint8(base, idx, rem, &major_version);
+    decode_uint8(base, idx, rem, &minor_version);
+    if(major_version != N2N_MAJOR_VERSION ||
+            minor_version != N2N_MINOR_VERSION) {
+        /* error: version missmatch */
+        return 1;
+    }
     decode_uint8(base, idx, rem, (uint8_t *) &hdr->pc);
     decode_uint8(base, idx, rem, (uint8_t *) &hdr->flags);
     return 0;
