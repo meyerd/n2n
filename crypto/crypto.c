@@ -8,13 +8,14 @@
 
 #define GCRYPT_NO_DEPRECATED
 #define DERIV_HASH_SIZE 48
+#define GCRYPT_MIN_VERION "1.5.0"
 
 int CRYPTO_INITIALIZED = 0;
 
 /* initialize global values for the cryptographic engine */
 int crypto_init(void)
 {
-    /* initialize libgcrypt */
+    /* initialize libgcrypt (overriding gnutls' gcrypt initialization) */
     //TODO remove debug
     GCRY(gcry_control(GCRYCTL_SET_VERBOSITY, GCRY_LOG_DEBUG));
     // use this at good places
@@ -25,7 +26,7 @@ int crypto_init(void)
     //gcry_set_log_handler(log_handler, NULL);
 
     GCRY(gcry_control(GCRYCTL_ENABLE_M_GUARD));
-    if (!gcry_check_version(GCRYPT_VERSION)) {
+    if (!gcry_check_version(GCRYPT_MIN_VERION)) {
         traceEvent(TRACE_ERROR, "gcrypt init error");
         return -1;
     }
@@ -207,5 +208,19 @@ int crypto_rnd(void **rnd, size_t len)
 
     *rnd = xmalloc_sec(len);
     GTLS(gnutls_rnd(GNUTLS_RND_RANDOM, *rnd, len));
+    return 0;
+}
+
+/* Hash the community name for transfer over wire.
+ * Returns zero or negative error code.
+ */
+int hash_community(char *name, size_t len, void *hashed)
+{
+    CHECK_CRYPTO();
+
+    uint8_t output[48];
+    GTLS(gnutls_hash_fast(GNUTLS_DIG_SHA384, name, len, output));
+    // the packet format uses 8 bytes of the community hash
+    memcpy(hashed, output, N2N_COMMUNITY_SIZE);
     return 0;
 }
