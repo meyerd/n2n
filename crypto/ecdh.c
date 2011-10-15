@@ -86,8 +86,6 @@ static int extract_x(gcry_mpi_t *shared_point, void **shared_secret)
     /* cut off first byte and throw away tail with y component */
     memcpy(*shared_secret, buf + 1, x_size);
 
-    /* zeroize buffer with shared secret point */
-    memset(buf, 0, mpi_size);
     gnutls_free(buf);
     return x_size;
 }
