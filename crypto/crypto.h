@@ -12,8 +12,11 @@ void crypto_deinit(void);
 int crypto_set_key_p2p(void *key, size_t len);
 int crypto_set_key_snode(void *key, size_t len);
 
+// random number service, use with caution
 int crypto_rnd(void **rnd, size_t len);
 
+// hashes community name giving the first eight bytes
+int hash_community(char *name, size_t len, void *hashed);
 
 /* internal stuff */
 
