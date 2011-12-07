@@ -679,6 +679,10 @@ static void exit_help(int argc, char * const argv[])
 #if defined(N2N_HAVE_DAEMON)
     fprintf( stderr, "-f        \tRun in foreground.\n" );
 #endif /* #if defined(N2N_HAVE_DAEMON) */
+#ifndef WIN32
+    printf("-u <UID>                 | User ID (numeric) to use when privileges are dropped.\n");
+    printf("-g <GID>                 | Group ID (numeric) to use when privileges are dropped.\n");
+#endif /* ifndef WIN32 */
     fprintf( stderr, "-v        \tIncrease verbosity. Can be used multiple times.\n" );
     fprintf( stderr, "-h        \tThis help message.\n" );
     fprintf( stderr, "\n" );
@@ -702,12 +706,17 @@ int main( int argc, char * const argv[] )
 {
     n2n_sn_t sss;
 
+#ifndef WIN32
+    uid_t   userid=0; /* root is the only guaranteed ID */
+    gid_t   groupid=0; /* root is the only guaranteed ID */
+#endif
+
     init_sn( &sss );
 
     {
         int opt;
 
-        while((opt = getopt_long(argc, argv, "fl:vh", long_options, NULL)) != -1) 
+        while((opt = getopt_long(argc, argv, "fl:u:g:vh", long_options, NULL)) != -1) 
         {
             switch (opt) 
             {
@@ -717,6 +726,18 @@ int main( int argc, char * const argv[] )
             case 'f': /* foreground */
                 sss.daemon = 0;
                 break;
+#ifndef WIN32
+	    case 'u': /* unprivileged uid */
+		{
+			userid = atoi(optarg);
+			break;
+		}
+	    case 'g': /* unprivileged uid */
+		{
+			groupid = atoi(optarg);
+			break;
+		}
+#endif 
             case 'h': /* help */
                 exit_help(argc, argv);
                 break;
@@ -764,6 +785,16 @@ int main( int argc, char * const argv[] )
         traceEvent( TRACE_NORMAL, "supernode is listening on UDP %u (management)", N2N_SN_MGMT_PORT );
     }
 
+#ifndef WIN32
+    if ( (userid != 0) || (groupid != 0 ) ) {
+	    traceEvent(TRACE_NORMAL, "Interface up. Dropping privileges to uid=%d, gid=%d",
+			    (signed int)userid, (signed int)groupid);
+
+	    /* Finished with the need for root privileges. Drop to unprivileged user. */
+	    setreuid( userid, userid );
+	    setregid( groupid, groupid );
+    }
+#endif
     traceEvent(TRACE_NORMAL, "supernode started");
 
     return run_loop(&sss);
