@@ -680,8 +680,8 @@ static void exit_help(int argc, char * const argv[])
     fprintf( stderr, "-f        \tRun in foreground.\n" );
 #endif /* #if defined(N2N_HAVE_DAEMON) */
 #ifndef WIN32
-    printf("-u <UID>                 | User ID (numeric) to use when privileges are dropped.\n");
-    printf("-g <GID>                 | Group ID (numeric) to use when privileges are dropped.\n");
+    fprintf( stderr, "-u <UID>  \tUser ID (numeric) to use when privileges are dropped.\n");
+    fprintf( stderr, "-g <GID>  \tGroup ID (numeric) to use when privileges are dropped.\n");
 #endif /* ifndef WIN32 */
     fprintf( stderr, "-v        \tIncrease verbosity. Can be used multiple times.\n" );
     fprintf( stderr, "-h        \tThis help message.\n" );
