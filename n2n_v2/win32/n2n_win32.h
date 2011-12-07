@@ -15,6 +15,7 @@
 /* should be defined here and before winsock gets included */
 #define _WIN32_WINNT 0x501 //Otherwise the linker doesnt find getaddrinfo
 #include <inttypes.h>
+#define EAFNOSUPPORT WSAEAFNOSUPPORT
 #endif /* #if defined(__MINGW32__) */
 
 #include <winsock2.h>
@@ -113,3 +114,4 @@ typedef struct tuntap_dev {
 int gettimeofday (struct timeval *tv, void* tz);
 
 #endif
+
