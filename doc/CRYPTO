@@ -85,9 +85,7 @@ with the other security association information.
 Packet format
 =============
 
-We choose the encrypting and authenticating AES GCM mode for performance
-security. gcm 256 is not implemented in gnutls (but it is in nettle), so we use
-128 bit.
+We choose the encrypting and authenticating AES GCM mode for performance.
 
 to consider:
 - which fields to authenticate with GCM, but not encrypt (e.g. MAC addr)
@@ -96,7 +94,7 @@ to consider:
    plain text to make statistical analysis more difficult]
 - security association explicit in packet?
 
-planned payload AES GCM 128 bit:
+planned payload AES GCM 256 bit:
 ?B crypto protocol version [authenticated]
 12B IV
 ---enc---

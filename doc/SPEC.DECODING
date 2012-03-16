@@ -21,7 +21,7 @@ SPI == 0: //special SPI; this is a non-payload packet
       set_peer_ready
     holepunch packet:
       discard
-      
+
 SPI != 0: //this is a payload packet
   find peer P associated with SPI (if not present: discard)
   check and decrypt payload to PL (if failed: discard)
