@@ -8,7 +8,7 @@
 
 #define GCRYPT_NO_DEPRECATED
 #define DERIV_HASH_SIZE 48
-#define GCRYPT_MIN_VERION "1.5.0"
+#define GCRYPT_MIN_VERSION "1.5.0"
 
 int CRYPTO_INITIALIZED = 0;
 
@@ -26,7 +26,7 @@ int crypto_init(void)
     //gcry_set_log_handler(log_handler, NULL);
 
     GCRY(gcry_control(GCRYCTL_ENABLE_M_GUARD));
-    if (!gcry_check_version(GCRYPT_MIN_VERION)) {
+    if (!gcry_check_version(GCRYPT_MIN_VERSION)) {
         traceEvent(TRACE_ERROR, "gcrypt init error");
         return -1;
     }
