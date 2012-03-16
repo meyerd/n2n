@@ -60,7 +60,7 @@ SPI == NULL:
     pre-handshake:
       if ack: discard
       allocate new spi
-      send pre-hanshake ack
+      send pre-handshake ack
     handshake:
       if ack: discard
       HMAC check (if wrong: discard)
