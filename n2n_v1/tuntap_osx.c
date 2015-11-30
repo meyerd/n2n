@@ -19,14 +19,14 @@
 
 #ifdef _DARWIN_
 
-void tun_close(tuntap_dev *device);
+void tuntap_close(tuntap_dev *device);
 
 /* ********************************** */
 
 #define N2N_OSX_TAPDEVICE_SIZE 32
-int tuntap_open(tuntap_dev *device /* ignored */, 
-                char *dev, 
-                char *device_ip, 
+int tuntap_open(tuntap_dev *device /* ignored */,
+                char *dev,
+                char *device_ip,
                 char *device_mask,
                 const char * device_mac,
 		int mtu) {
@@ -42,7 +42,7 @@ int tuntap_open(tuntap_dev *device /* ignored */,
       break;
     }
   }
-  
+
   if(device->fd < 0) {
     traceEvent(TRACE_ERROR, "Unable to open tap device");
     return(-1);
@@ -76,7 +76,7 @@ int tuntap_open(tuntap_dev *device /* ignored */,
 
     fd = popen(buf, "r");
     if(fd < 0) {
-      tun_close(device);
+      tuntap_close(device);
       return(-1);
     } else {
       int a, b, c, d, e, f;
@@ -84,7 +84,7 @@ int tuntap_open(tuntap_dev *device /* ignored */,
       buf[0] = 0;
       fgets(buf, sizeof(buf), fd);
       pclose(fd);
-      
+
       if(buf[0] == '\0') {
 	traceEvent(TRACE_ERROR, "Unable to read tap%d interface MAC address");
 	exit(0);
