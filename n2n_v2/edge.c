@@ -232,6 +232,11 @@ static int readConfFile(const char * filename, char * const linebuffer) {
 }
 
 /* Create the argv vector */
+/* FIXME
+ * - this function does not handle quoted parameters
+ * Worse still, by this point, we have removed any indications of what the
+ * original params were - so quote handling performed by the shell is gone..
+ */
 static char ** buildargv(int * effectiveargc, char * const linebuffer) {
   const int  INITIAL_MAXARGC = 16;	/* Number of args + NULL in initial argv */
   int     maxargc;
