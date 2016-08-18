@@ -69,6 +69,11 @@ add_library(n2n n2n.c
                 version.c
             )
 
+if(NOT WIN32)
+add_library(scm unix-scm.c)
+target_link_libraries(n2n scm)
+endif(NOT WIN32)
+
 if(DEFINED WIN32)
 add_subdirectory(win32)
 target_link_libraries(n2n n2n_win32)

@@ -29,6 +29,19 @@
 #include <sys/stat.h>
 #include "minilzo.h"
 
+#include "scm.h"
+
+int n2n_main(int, char **);
+int n2n_stop(void *);
+
+struct SCM_def sd = {
+        .name = "edge",
+        .desc = "edge - n2n VPN Edge node",
+        .main = n2n_main,
+        .stop = n2n_stop,
+};
+
+
 #if defined(DEBUG)
 #define SOCKET_TIMEOUT_INTERVAL_SECS    5
 #define DEFAULT_HOLEPUNCH_INTERVAL      20 /* sec */
@@ -1174,6 +1187,9 @@ static const struct option long_options[] = {
   { "holepunch-interval", required_argument, NULL, 'i' },
   { "help"   ,            no_argument,       NULL, 'h' },
   { "verbose",            no_argument,       NULL, 'v' },
+#ifdef WIN32
+  { "remove",             no_argument,       NULL, 'R' },
+#endif
   { NULL,                 0,                 NULL,  0  }
 };
 
@@ -2158,7 +2174,7 @@ static int run_loop(n2n_edge_t * eee );
 #define N2N_IF_MODE_SIZE        16 /* static | dhcp */
 
 /** Entry point to program from kernel. */
-int main(int argc, char* argv[])
+int real_main(int argc, char* argv[])
 {
     int     opt;
     int     local_port = 0 /* any port */;
@@ -2242,6 +2258,27 @@ int main(int argc, char* argv[])
     /* build the new argv from the linebuffer */
     effectiveargv = buildargv(&effectiveargc, linebuffer);
 
+#ifdef WIN32
+    /* unfortunately, any cmdline quoting used originally is gone, so we can
+     * not use the getopt to process the install
+     */
+    if (!strncasecmp(effectiveargv[1],"--install",9)) {
+        char *p = strchr(linebuffer,' ') +1; /* skip the argv[0] */
+        char *scm_args = strchr(p,' ') +1; /* skip the "--install" */
+
+        printf("Installing service with args '%s'\n",scm_args);
+        /* request service installation */
+        char *path = SCM_Install(&sd,scm_args);
+        if (!path) {
+            printf("Service installation failed\n");
+            return 2;
+        }
+        printf("Service '%s' installed, binary path '%s'\n",sd.name,path);
+        printf("You should now start the service using the service manager.\n");
+        return 1;
+    }
+#endif
+
     if (linebuffer)
     {
         free(linebuffer);
@@ -2253,7 +2290,7 @@ int main(int argc, char* argv[])
     optarg = NULL;
     while((opt = getopt_long(effectiveargc,
                              effectiveargv,
-                             "K:k:a:bc:Eu:g:m:M:s:d:l:L:i:p:fvhrt:", long_options, NULL)) != EOF)
+                             "K:k:a:bc:Eu:g:m:M:s:d:l:L:i:p:fvhrt:R", long_options, NULL)) != EOF)
     {
         switch (opt)
         {
@@ -2425,6 +2462,19 @@ int main(int argc, char* argv[])
             break;
         }
 
+#ifdef WIN32
+       case 'R': /* Remove */
+       {
+               // request service removal
+               if (SCM_Remove(&sd)==0) {
+                       printf("Deleted service '%s'\n",sd.name);
+               } else {
+                       printf("Service removal failed\n");
+               }
+               return 1;
+       }
+#endif
+
         } /* end switch */
     }
 
@@ -2568,9 +2618,9 @@ int main(int argc, char* argv[])
     return run_loop(&eee);
 }
 
+int   keep_running=1;
 static int run_loop(n2n_edge_t * eee )
 {
-    int   keep_running=1;
     size_t numPurged;
     time_t lastIfaceCheck=0;
     time_t lastTransop=0;
@@ -2698,4 +2748,21 @@ static int run_loop(n2n_edge_t * eee )
     return(0);
 }
 
+int n2n_main(int argc, char **argv) {
+       return real_main(argc,argv);
+}
+
+int n2n_stop(void *param1) {
+       keep_running=0;
+       return 0;
+}
+
+int main(int argc, char **argv)
+{
+        if (SCM_Start(&sd,argc,argv)!=SVC_OK) {
+                return 1;
+        }
+
+        return 0;
+}
 
