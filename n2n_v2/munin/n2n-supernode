@@ -1,0 +1,39 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+
+use Munin::Plugin;
+
+sub do_fetch {
+    die("FIXME - fill this function in");
+}
+
+sub do_config {
+    die("FIXME - fill this function in");
+}
+
+sub do_autoconf {
+    # quick check to see if this plugin should be enabled
+    if (`pgrep supernode`) {
+        print("yes\n");
+        exit 0;
+    } else {
+        print("no - supernode is not running\n");
+        exit 0;
+    }
+}
+
+sub main() {
+    if (!defined($ARGV[0])) {
+        do_fetch();
+    }
+    if ($ARGV[0] eq 'config') {
+        do_config();
+    }
+    if ($ARGV[0] eq 'autoconf') {
+        do_autoconf();
+    }
+    die("bad arg");
+}
+main();
+
