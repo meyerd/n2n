@@ -148,6 +148,7 @@ void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...) {
     }
 #else
     /* this is the WIN32 code */
+    OutputDebugStringA(buf);
 	for(i=strlen(file)-1; i>0; i--) if(file[i] == '\\') { i++; break; };
     snprintf(out_buf, sizeof(out_buf), "%s [%11s:%4d] %s%s", theDate, &file[i], line, extra_msg, buf);
     printf("%s\n", out_buf);
