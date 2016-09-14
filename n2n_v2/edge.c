@@ -2409,7 +2409,7 @@ int real_main(int argc, char* argv[])
             strncpy( eee.local_ip_str, optarg, N2N_EDGE_LOCAL_IP_SIZE);
             if ( N2N_EDGE_LOCAL_IP_SIZE > 0 )
                 eee.local_ip_str[N2N_EDGE_LOCAL_IP_SIZE - 1] = '\0';
-            traceEvent(TRACE_DEBUG, "Storing local_ip_str = %s\n", (eee.sn_ip_array[eee.sn_num]) );
+            traceEvent(TRACE_DEBUG, "Storing local_ip_str = %s\n", (eee.local_ip_str) );
             break;
         }
 
