@@ -137,4 +137,8 @@ install(FILES ${PROJECT_BINARY_DIR}/doc/supernode.1.gz
         DESTINATION /usr/share/man1)
 install(FILES ${PROJECT_BINARY_DIR}/doc/n2n_v2.7.gz
         DESTINATION /usr/share/man7)
+
+install(PROGRAMS ${PROJECT_SOURCE_DIR}/munin/n2n-supernode
+        DESTINATION /usr/share/munin/plugins)
+
 endif(DEFINED UNIX)
