@@ -168,6 +168,7 @@ static const char * supernode_ip( const n2n_edge_t * eee )
 static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addr);
 static int localip2addr(n2n_sock_t * l_ip,
         const n2n_local_ip_t local_ip_strIn, int local_port);
+static int set_localip(n2n_edge_t * eee);
 
 static void send_packet2net(n2n_edge_t * eee,
 			    uint8_t *decrypted_msg, size_t len);
@@ -1552,6 +1553,7 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
 								 "  peers   List table of known peers\n"
                                  "  reload  Re-read the keyschedule\n"
                                  "  mangle_peer mac ip [port] mangle peer\n"
+                                 "  localip [value]     Show or set the local IP value\n"
                                  "  <enter> Display statistics\n\n");
 
             sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
@@ -1676,6 +1678,7 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
             }
         }
     }
+
     if ( recvlen >= 12 )
     {
         if ( 0 == memcmp (udp_buf, "mangle_peer ", 12) )
@@ -1709,6 +1712,36 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
             }
             return;
         }
+    }
+
+    char * cmd = strtok( (char *)udp_buf, " ");
+    if ( 0 == strncmp( cmd, "localip", 7 ) )
+    {
+        char *arg = strtok( NULL, " \r\n");
+        if (arg) {
+            strncpy( eee->local_ip_str, arg, N2N_EDGE_LOCAL_IP_SIZE);
+            if ( set_localip(eee) != 0) {
+                sendto( eee->udp_mgmt_sock, "failure\n", 9, 0,
+                        (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
+                return;
+            }
+        }
+
+        /* show current value - possibly after changing it */
+        msg_len=0;
+        if (!eee->local_sock_ena) {
+            msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
+                                 "> localip off\n" );
+        } else {
+            n2n_sock_str_t local_sockbuf;
+            msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
+                                 "> localip %s (%s)\n",
+                                 eee->local_ip_str,
+                                 sock_to_cstr( local_sockbuf, &(eee->local_sock) ) );
+        }
+        sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
+                (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
+        return;
     }
 
     traceEvent(TRACE_DEBUG, "mgmt status rq" );
@@ -2109,6 +2142,29 @@ static int localip2addr(n2n_sock_t * l_ip,
     return 1;
 }
 
+static int set_localip(n2n_edge_t * eee) {
+    int     local_port;
+    n2n_sock_str_t local_sockbuf;
+    struct sockaddr_in sa;
+
+    socklen_t sa_len = sizeof(sa);
+    if ( getsockname(eee->udp_sock, (struct sockaddr *) &sa, &sa_len) == -1 ) {
+        traceEvent( TRACE_ERROR, "getsockname() failed" );
+        return(-1);
+    }
+
+    local_port = ntohs(sa.sin_port);
+    memset(&(eee->local_sock), 0, sizeof(eee->local_sock));
+
+    if ( (eee->local_sock_ena = localip2addr( &(eee->local_sock),
+                    eee->local_ip_str, local_port ) ) ) {
+        traceEvent(TRACE_NORMAL, "Local Socket is %s",
+                sock_to_cstr( local_sockbuf, &(eee->local_sock) ) );
+        return(0);
+    }
+    return(-1);
+}
+
 /* ***************************************************** */
 
 
@@ -2198,10 +2254,6 @@ int real_main(int argc, char* argv[])
     int     i, effectiveargc=0;
     char ** effectiveargv=NULL;
     char  * linebuffer = NULL;
-
-    n2n_sock_str_t local_sockbuf;
-    struct sockaddr_in sa;
-    socklen_t sa_len;
 
     n2n_edge_t eee; /* single instance for this program */
 
@@ -2589,18 +2641,10 @@ int real_main(int argc, char* argv[])
 
 
     if(eee.local_sock_ena) {
-        sa_len = sizeof(sa);
-        if ( getsockname(eee.udp_sock, (struct sockaddr *) &sa, &sa_len) == -1 ) {
-            traceEvent( TRACE_ERROR, "getsockname() failed" );
+        if ( set_localip(&eee) != 0) {
+            traceEvent( TRACE_ERROR, "set localip failed" );
             return(-1);
         }
-        local_port = ntohs(sa.sin_port);
-        memset(&(eee.local_sock), 0, sizeof(eee.local_sock));
-
-        if ( (eee.local_sock_ena = localip2addr( &(eee.local_sock),
-                        eee.local_ip_str, local_port ) ) )
-            traceEvent(TRACE_NORMAL, "Local Socket is %s",
-                    sock_to_cstr( local_sockbuf, &(eee.local_sock) ) );
     }
 
     eee.udp_mgmt_sock = open_socket(mgmt_port, 0 /* bind LOOPBACK*/ );
