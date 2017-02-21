@@ -2168,6 +2168,7 @@ static int scan_address( char * ip_addr, size_t addr_size,
 }
 
 static int run_loop(n2n_edge_t * eee );
+int real_main(int argc, char* argv[]);
 
 #define N2N_NETMASK_STR_SIZE    16 /* dotted decimal 12 numbers + 3 dots */
 #define N2N_MACNAMSIZ           18 /* AA:BB:CC:DD:EE:FF + NULL*/
