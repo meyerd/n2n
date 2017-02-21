@@ -1618,9 +1618,9 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
 				c++;
 				msg_len = 0;
 				msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-					">  %i: %s -> %s last: %li\n", c, macaddr_str( mac_buf, lpi->mac_addr ), 
+                                        ">  %i: %s -> %s last: %li(%ld sec ago)\n", c, macaddr_str( mac_buf, lpi->mac_addr ),
 						sock_to_cstr( sockbuf, &(lpi->sock) ),
-						lpi->last_seen);
+                                                lpi->last_seen, (now - lpi->last_seen));
 				sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0,
 					(struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
 			}
@@ -1638,14 +1638,14 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
 				msg_len = 0;
                 if(lpi->num_sockets == 0)
                     msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-                        ">  %i: %s -> (no info) last: %li\n", c,
+                        ">  %i: %s -> (no info) last: %li(%ld sec ago)\n", c,
                         macaddr_str( mac_buf, lpi->mac_addr ), 
-                        lpi->last_seen);
+                        lpi->last_seen, (now - lpi->last_seen));
                 else
                     msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-                        ">  %i: %s -> %s last: %li\n", c, macaddr_str( mac_buf, lpi->mac_addr ), 
+                        ">  %i: %s -> %s last: %li(%ld sec ago)\n", c, macaddr_str( mac_buf, lpi->mac_addr ),
                             sock_to_cstr( sockbuf, lpi->sockets ),
-                            lpi->last_seen);
+                            lpi->last_seen, (now - lpi->last_seen));
                 if(lpi->num_sockets > 1)
                     msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
                         "                           %s\n",
