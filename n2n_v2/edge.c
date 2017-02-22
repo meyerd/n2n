@@ -1506,7 +1506,7 @@ static int handle_PACKET( n2n_edge_t * eee,
  *  action. */
 static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
 {
-    uint8_t             udp_buf[N2N_PKT_BUF_SIZE];      /* Compete UDP packet */
+    uint8_t             udp_buf[N2N_PKT_BUF_SIZE+1];   /* Complete UDP packet */
     ssize_t             recvlen;
     struct sockaddr_in  sender_sock;
     socklen_t           i;
@@ -1529,6 +1529,9 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
 
         return; /* failed to receive data from UDP */
     }
+
+    /* avoid parsing any uninitialized junk from the stack */
+    udp_buf[recvlen] = 0;
 
     if ( recvlen >= 4 )
     {
@@ -1714,34 +1717,36 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
         }
     }
 
-    char * cmd = strtok( (char *)udp_buf, " ");
-    if ( 0 == strncmp( cmd, "localip", 7 ) )
-    {
-        char *arg = strtok( NULL, " \r\n");
-        if (arg) {
-            strncpy( eee->local_ip_str, arg, N2N_EDGE_LOCAL_IP_SIZE);
-            if ( set_localip(eee) != 0) {
-                sendto( eee->udp_mgmt_sock, "failure\n", 9, 0,
-                        (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
-                return;
+    char * cmd = strtok( (char *)udp_buf, " \r\n");
+    if (cmd) {
+        if ( 0 == strcmp( cmd, "localip" ) )
+        {
+            char *arg = strtok( NULL, " \r\n");
+            if (arg) {
+                strncpy( eee->local_ip_str, arg, N2N_EDGE_LOCAL_IP_SIZE);
+                if ( set_localip(eee) != 0) {
+                    sendto( eee->udp_mgmt_sock, "failure\n", 9, 0,
+                            (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
+                    return;
+                }
             }
-        }
 
-        /* show current value - possibly after changing it */
-        msg_len=0;
-        if (!eee->local_sock_ena) {
-            msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-                                 "> localip off\n" );
-        } else {
-            n2n_sock_str_t local_sockbuf;
-            msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-                                 "> localip %s (%s)\n",
-                                 eee->local_ip_str,
-                                 sock_to_cstr( local_sockbuf, &(eee->local_sock) ) );
+            /* show current value - possibly after changing it */
+            msg_len=0;
+            if (!eee->local_sock_ena) {
+                msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
+                                     "> localip off\n" );
+            } else {
+                n2n_sock_str_t local_sockbuf;
+                msg_len += snprintf( (char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
+                                     "> localip %s (%s)\n",
+                                     eee->local_ip_str,
+                                     sock_to_cstr( local_sockbuf, &(eee->local_sock) ) );
+            }
+            sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
+                    (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
+            return;
         }
-        sendto( eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
-                (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in) );
-        return;
     }
 
     traceEvent(TRACE_DEBUG, "mgmt status rq" );
