@@ -2130,13 +2130,11 @@ static int localip2addr(n2n_sock_t * l_ip,
             &ip[3]);
 
     if( n_matches != 4) {
-        traceEvent(TRACE_WARNING, "Wrong local_ip parameter (-i ip), disabled");
         return 0;
     }
 
     for( i=0; i < 4; i++ ) {
         if( ip[i] > 255 ) {
-            traceEvent(TRACE_WARNING, "Invalid local_ip address (-i ip), disabled");
             return 0;
         }
     }
@@ -2152,6 +2150,15 @@ static int set_localip(n2n_edge_t * eee) {
     n2n_sock_str_t local_sockbuf;
     struct sockaddr_in sa;
 
+    /* Assume failure, until one of the methods succeeds */
+    eee->local_sock_ena = 0;
+
+    if (eee->local_ip_str[0] == 0) {
+        /* Sanity check - cannot use an empty string to set localip */
+        traceEvent( TRACE_ERROR, "localip string is empty" );
+        return(-1);
+    }
+
     socklen_t sa_len = sizeof(sa);
     if ( getsockname(eee->udp_sock, (struct sockaddr *) &sa, &sa_len) == -1 ) {
         traceEvent( TRACE_ERROR, "getsockname() failed" );
@@ -2161,12 +2168,61 @@ static int set_localip(n2n_edge_t * eee) {
     local_port = ntohs(sa.sin_port);
     memset(&(eee->local_sock), 0, sizeof(eee->local_sock));
 
-    if ( (eee->local_sock_ena = localip2addr( &(eee->local_sock),
-                    eee->local_ip_str, local_port ) ) ) {
+    if ( localip2addr( &(eee->local_sock),
+                    eee->local_ip_str, local_port ) ) {
+        eee->local_sock_ena = 1;
+    } else if ( 0 == strcmp( eee->local_ip_str, "auto" ) ) {
+        /* Automatically use a "sane" value for the localip.
+         * This is currently using the local ip address that is used to
+         * talk to the supernode, but that could change if a better method
+         * if found
+         */
+
+        SOCKET fd = socket(AF_INET, SOCK_DGRAM, 0);
+        if (fd < 0) {
+            traceEvent(TRACE_WARNING, "socket() failed");
+            return(-1);
+        }
+
+        struct sockaddr_in sa_sn;
+
+        fill_sockaddr( (struct sockaddr *) &sa_sn,
+                       sizeof(sa_sn),
+                       &eee->supernode );
+
+        if ( connect(fd, (struct sockaddr *) &sa_sn, sizeof(sa_sn) ) <0 ) {
+            close(fd);
+            traceEvent(TRACE_WARNING, "connect() failed");
+            return(-1);
+        }
+
+        if ( getsockname(fd, (struct sockaddr *) &sa, &sa_len) <0 ) {
+            close(fd);
+            traceEvent(TRACE_WARNING, "getsockname() failed");
+            return(-1);
+        }
+
+        if ( AF_INET != sa.sin_family ) {
+            /* TODO IPV6 */
+            close(fd);
+            traceEvent(TRACE_WARNING, "wrong socket family");
+            return(-1);
+        }
+
+        eee->local_sock.family = sa.sin_family;
+        eee->local_sock.port = local_port;
+        memcpy( eee->local_sock.addr.v4, &(sa.sin_addr.s_addr), IPV4_SIZE );
+        eee->local_sock_ena = 1;
+        close(fd);
+    }
+
+    if (eee->local_sock_ena) {
         traceEvent(TRACE_NORMAL, "Local Socket is %s",
                 sock_to_cstr( local_sockbuf, &(eee->local_sock) ) );
         return(0);
     }
+
+    traceEvent(TRACE_WARNING, "Wrong local_ip parameter (-L ip), disabled");
     return(-1);
 }
 
