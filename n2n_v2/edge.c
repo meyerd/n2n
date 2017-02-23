@@ -542,7 +542,8 @@ static void help() {
   printf("-K <key file>            | Specify a key schedule file to load. Not with -k.\n");
   printf("-s <netmask>             | Edge interface netmask in dotted decimal notation (255.255.255.0).\n");
   printf("-l <supernode host:port> | Supernode IP:port\n");
-  printf("-i <local_ip>            | Add local ip to bypass between same nat problem\n");
+  printf("-L <local_ip>            | Add local ip to bypass between same nat problem\n");
+  printf("-i <interval>            | Set the NAT hole-punch interval (default 20seconds)\n");
   printf("-b                       | Periodically resolve supernode IP\n");
   printf("                         : (when supernodes are running on dynamic IPs)\n");
   printf("-p <local port>          | Fixed local UDP port.\n");
