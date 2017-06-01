@@ -9,12 +9,25 @@ N2N_COMMUNITY="MyCommunityName"
 N2N_KEY="MySecretCode"
 
 # Sets the n2n supernode IP address to register to.
-N2N_SUPERNODE="gw1.example.com"
+#N2N_SN_HOST="localhost"
+#N2N_SN_PORT="7654"
 
-# Sets the n2n virtual LAN IP address being claimed. This is a private IP
-# address. All IP addresses in an n2n community typical belong to the same /24
-# net‐ work (ie. only the last octet of the IP addresses varies).
-N2N_IP="10.10.10.11"
+# Hostname supplied to 'getent' to look up configuration.
+#HOSTNAME=`uname -n`
+
+# IP & MAC addresses settings accoring to 'getent'
+# ( set via nss which means where 
+#   '/etc/nsswitch.conf' says $HOSTNAME can be found )
+# ( MAC not required )
+#N2N_IP_ADDR=`getent hosts $HOSTNAME | awk '{print  $1}'`
+#N2N_IP="static:$N2N_IP_ADDR"
+#N2N_MAC=`getent ethers $HOSTNAME | awk '{print  $1}'`
+
+# -r Enable packet forwarding
+# -b Periodically resolve supernode IP (resolution often fails at boot-time)
+# -E Accept muilticast MAC addresses
+
+DAEMON_OPTS="-r -b -E"
 
 # Uncomment this to get edge node started.
 #N2N_EDGE_CONFIG_DONE="yes"

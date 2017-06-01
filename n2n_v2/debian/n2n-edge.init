@@ -11,6 +11,7 @@
 
 # Init script for n2n edge node
 # Copyright (C) 2010  Kim Hansen <kim@i9.dk>
+# Refactor (C) 2017 Dale MM0HGW <mm0hgw@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -47,6 +48,33 @@ then
         exit 0
 fi
 
+# Load default values
+if [ -z $HOSTNAME ]; then 
+	HOSTNAME=`uname -n`
+fi
+if [ -z ${N2N_SN_HOST+x} ]; then 
+	N2N_SN_HOST=localhost; 
+fi
+if [ -z ${N2N_SN_PORT+x} ]; then 
+	N2N_SN_PORT=7654; 
+fi
+DAEMON_ARGS="$DAEMON_ARGS  -l $N2N_SN_HOST:$N2N_SN_PORT"
+if [ -z ${N2N_IP+x} ]; then 
+	N2N_IP_ADDR=`getent hosts $HOSTNAME | awk '{print  $1}'`
+	N2N_IP="static:$N2N_IP_ADDR"
+fi
+if [ -z $N2N_IP ]; then
+	N2N_IP="dhcp:0.0.0.0"
+fi	
+DAEMON_ARGS="$DAEMON_ARGS -a $N2N_IP";
+if [ -z ${N2N_MAC+x} ]; then
+	N2N_MAC=`getent ethers $HOSTNAME | awk '{print  $1}'`; 
+fi
+if ! [ -z $N2N_MAC ]; then 
+	DAEMON_ARGS="$DAEMON_ARGS -m $N2N_MAC"; 
+fi
+DAEMON_ARGS="$DAEMON_ARGS -c $N2N_COMMUNITY"
+
 # Load the VERBOSE setting and other rcS variables
 . /lib/init/vars.sh
 
@@ -67,8 +95,7 @@ do_start()
 		|| return 1
 	export N2N_KEY
 	start-stop-daemon --start --quiet --user nobody --exec $DAEMON -- \
-		-a $N2N_IP -c $N2N_COMMUNITY -l $N2N_SUPERNODE:7654 -u $(id -u nobody) -g $(id -g nobody) \
-		$DAEMON_ARGS \
+	 -u $(id -u nobody) -g $(id -g nobody) $DAEMON_ARGS \
 		|| return 2
 }
 
