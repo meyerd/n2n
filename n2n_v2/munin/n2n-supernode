@@ -1,0 +1,110 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+
+use Data::Dumper;
+$Data::Dumper::Indent = 1;
+$Data::Dumper::Sortkeys = 1;
+$Data::Dumper::Quotekeys = 0;
+
+use IO::Socket::INET;
+use Munin::Plugin;
+
+my $fields = {
+    edges     => {
+        label => 'Current Connected clients',
+    },
+    errors    => {
+        label => 'Error rate',
+        type  => 'DERIVE',
+        min   => 0,
+    },
+    reg_sup   => {
+        label => 'Connect rate',
+        type  => 'DERIVE',
+        min   => 0,
+    },
+    reg_nak   => {
+        label => 'Connect error rate',
+        type  => 'DERIVE',
+        min   => 0,
+    },
+    fwd       => {
+        label => 'Packets forwarded rate',
+        type  => 'DERIVE',
+        min   => 0,
+    },
+    broadcast => {
+        label => 'Broadcast packet rate',
+        type  => 'DERIVE',
+        min   => 0,
+    },
+};
+
+sub do_config {
+    print("graph_title n2n supernode status\n");
+    print("graph_category network\n");
+    print("graph_order edges errors reg_sup reg_nak fwd broadcast\n");
+    for my $fieldname (keys(%{$fields})) {
+        my $field = $fields->{$fieldname};
+        for my $key (keys(%{$field})) {
+            print($fieldname.'.'.$key," ",$field->{$key},"\n");
+        }
+    }
+    exit 0;
+}
+
+sub do_autoconf {
+    # quick check to see if this plugin should be enabled
+    if (`pgrep supernode`) {
+        print("yes\n");
+        exit 0;
+    } else {
+        print("no - supernode is not running\n");
+        exit 0;
+    }
+}
+
+sub do_fetch {
+    my $sock = IO::Socket::INET->new(
+        PeerAddr => '127.0.0.1',
+        PeerPort => 5645,
+        Proto    => 'udp',
+    );
+    $sock->send("\n");
+    my $buf;
+    $sock->recv($buf,4096);
+    undef $sock;
+
+    my $db;
+    for my $line (split(/\n/,$buf)) {
+        if ($line =~ m/^(last [a-z]+) +(\d+) sec ago$/) {
+            $db->{$1} = $2;
+            next;
+        }
+        if ($line =~ m/^([a-z_]+) +(\d+)$/) {
+            $db->{$1} = $2;
+            next;
+        }
+    }
+
+    for my $field (keys(%{$fields})) {
+        print($field.".value ",$db->{$field},"\n");
+    }
+    exit 0;
+}
+
+sub main() {
+    if (!defined($ARGV[0])) {
+        do_fetch();
+    }
+    if ($ARGV[0] eq 'config') {
+        do_config();
+    }
+    if ($ARGV[0] eq 'autoconf') {
+        do_autoconf();
+    }
+    die("bad arg");
+}
+main();
+

@@ -1,0 +1,9 @@
+# Config file for the n2n supernode daemon.
+
+#N2N_SN_PORT=7654
+
+DAEMON_OPTS=""
+
+# Uncomment this to get edge node started.
+#N2N_SN_CONFIG_DONE="yes"
+

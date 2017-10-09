@@ -11,6 +11,7 @@
 
 # Init script for n2n supernode
 # Copyright (C) 2010  Kim Hansen <kim@i9.dk>
+# Refactor (C) 2017 Dale MM0HGW <mm0hgw@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,6 +41,10 @@ SCRIPTNAME=/etc/init.d/$NAME
 
 # Read configuration variable file if it is present
 [ -r /etc/default/$NAME ] && . /etc/default/$NAME
+
+# Set defaults
+if [ -z $N2N_SN_PORT ]; then N2N_SN_PORT=7654; fi
+DAEMON_ARGS="$DAEMON_ARGS -l $N2N_SN_PORT"
 
 # Load the VERBOSE setting and other rcS variables
 . /lib/init/vars.sh
