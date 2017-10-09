@@ -35,11 +35,13 @@
 /* maximum length of a line in the configuration file */
 #define MAX_CONFFILE_LINE_LENGTH     1024
 
+#define N2N_EDGE_SN_HOST_SIZE 48
+
 struct n2n_edge
 {
   u_char              re_resolve_supernode_ip;
   struct peer_addr    supernode;
-  char                supernode_ip[48];
+  char                supernode_ip[N2N_EDGE_SN_HOST_SIZE];
   char *              community_name /*= NULL*/;
   
   /*     int                 sock; */
@@ -668,8 +670,9 @@ static void update_registrations( n2n_edge_t * eee ) {
   if(time(NULL) < (eee->last_register+REGISTER_FREQUENCY)) return; /* Too early */
 
   traceEvent(TRACE_NORMAL, "Registering with supernode");
-  if(eee->re_resolve_supernode_ip)
+  if(eee->re_resolve_supernode_ip) {
     supernode2addr(eee, eee->supernode_ip);
+  }
 
   send_register(eee, &(eee->supernode), 0); /* Register with supernode */
 
@@ -1094,7 +1097,9 @@ static void startTunReadThread(n2n_edge_t *eee) {
 /* ***************************************************** */
 
 static void supernode2addr(n2n_edge_t * eee, char* addr) {
-  char *supernode_host = strtok(addr, ":");
+  char tmpAddr[N2N_EDGE_SN_HOST_SIZE];
+  memcpy(tmpAddr, addr, N2N_EDGE_SN_HOST_SIZE);
+  char *supernode_host = strtok(tmpAddr, ":");
 
   if(supernode_host) {
     char *supernode_port = strtok(NULL, ":");
@@ -1106,7 +1111,8 @@ static void supernode2addr(n2n_edge_t * eee, char* addr) {
     if ( supernode_port )
       eee->supernode.port = htons(atoi(supernode_port));
     else
-      traceEvent(TRACE_WARNING, "Bad supernode parameter (-l <host:port>)");
+      traceEvent(TRACE_WARNING, "Bad supernode parameter (-l <host:port>): %s",
+		      addr);
 
     nameerr = getaddrinfo( supernode_host, NULL, &aihints, &ainfo );
 
