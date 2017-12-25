@@ -2349,7 +2349,7 @@ int real_main(int argc, char* argv[])
         if(linebuffer[i] == '\\') linebuffer[i] = '/';
 #endif
 
-    for(i=1;i<argc;++i)
+    for(i = 1; i < argc; ++i)
     {
         if(argv[i][0] == '@')
         {
@@ -2377,18 +2377,18 @@ int real_main(int argc, char* argv[])
     /* unfortunately, any cmdline quoting used originally is gone, so we can
      * not use the getopt to process the install
      */
-    if (!strncasecmp(effectiveargv[1],"--install",9)) {
-        char *p = strchr(linebuffer,' ') +1; /* skip the argv[0] */
-        char *scm_args = strchr(p,' ') +1; /* skip the "--install" */
+    if (!_strnicmp(effectiveargv[1], "--install", 9)) {
+        char *p = strchr(linebuffer,' ') + 1; /* skip the argv[0] */
+        char *scm_args = strchr(p,' ') + 1; /* skip the "--install" */
 
-        printf("Installing service with args '%s'\n",scm_args);
+        printf("Installing service with args '%s'\n", scm_args);
         /* request service installation */
         char *path = SCM_Install(&sd,scm_args);
         if (!path) {
             printf("Service installation failed\n");
             return 2;
         }
-        printf("Service '%s' installed, binary path '%s'\n",sd.name,path);
+        printf("Service '%s' installed, binary path '%s'\n", sd.name,path);
         printf("You should now start the service using the service manager.\n");
         return 1;
     }
