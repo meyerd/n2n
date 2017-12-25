@@ -1,6 +1,6 @@
-This is the current development branch of the n2n p2p vpn software.
+This is a development branch of the n2n p2p vpn software.
 
-http://www.ntop.org/products/n2n/
+https://github.com/ntop/n2n
 
 It contains some modifications of the v2 version of n2n, which is the latest stable version
 and should be used for productive environments.
