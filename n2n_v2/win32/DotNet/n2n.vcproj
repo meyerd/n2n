@@ -226,6 +226,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\win-scm.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\wire.c"
 				>
 			</File>

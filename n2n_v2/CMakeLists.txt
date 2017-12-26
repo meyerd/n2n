@@ -88,6 +88,7 @@ endif(NOT WIN32)
 
 if(WIN32)
 add_subdirectory(win32)
+add_library(scm win32/win-scm.c)
 target_link_libraries(n2n n2n_win32)
 endif(WIN32)
 
