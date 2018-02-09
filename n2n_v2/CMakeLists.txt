@@ -32,7 +32,7 @@ endif(NOT DEFINED CMAKE_BUILD_TYPE)
 #set(CMAKE_BUILD_TYPE Release)
 
 #Ultrasparc64 users experiencing SIGBUS should try the following gcc options
-#(thanks to Robert Gibbon) 
+#(thanks to Robert Gibbon)
 #PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finline-functions -fweb -frename-registers -mapp-regs
 
 #for macOS, find openssl installed by Homebrew
@@ -43,9 +43,9 @@ endif(APPLE)
 
 # None
 if(NOT WIN32)
-set(CMAKE_C_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs -fPIC")
-set(CMAKE_CXX_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
-# Debug 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
+# Debug
 set(CMAKE_C_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 # Release
@@ -60,7 +60,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${OPENSSL_INCLUDE_DIR}")
 endif(APPLE)
 
 ## DEBUG FOR CMAKE
-#message(${N2N_VERSION}) 
+#message(${N2N_VERSION})
 #message(${N2N_OSNAME})
 ##message(${CMAKE_BUILD_TYPE})
 #message(${N2N_OPTION_AES})
