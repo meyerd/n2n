@@ -151,14 +151,13 @@ void tuntap_get_address(struct tuntap_dev *tuntap)
     {
         memset(buf,0,N2N_LINUX_SYSTEMCMD_SIZE); /* make sure buf is NULL terminated. */
         fread(buf, 1, 15, fp);
-        fclose(fp);
+        pclose(fp);
         fp=NULL;
 
         traceEvent(TRACE_INFO, "ifconfig address = %s", buf);
 
         tuntap->ip_addr = inet_addr(buf);
     }
-    pclose(fp);
 }
 
 
