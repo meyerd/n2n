@@ -158,6 +158,7 @@ void tuntap_get_address(struct tuntap_dev *tuntap)
 
         tuntap->ip_addr = inet_addr(buf);
     }
+    pclose(fp);
 }
 
 
