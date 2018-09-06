@@ -24,6 +24,9 @@
 #ifndef _N2N_H_
 #define _N2N_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /*
    tunctl -t tun0
    tunctl -t tun1
@@ -281,7 +284,7 @@ void print_n2n_version();
 struct peer_info * find_peer_by_mac( peer_info_t ** list,
                                      const n2n_mac_t mac );
 void   peer_list_add( struct peer_info * * list,
-                      struct peer_info * new );
+                      struct peer_info * newnode );
 size_t peer_list_size( const struct peer_info * list );
 void dealloc_peer( peer_info_t* peer );
 size_t hashed_peer_list_t_size(peer_info_t** htab);
@@ -297,4 +300,7 @@ size_t hashed_purge_expired_registrations(struct peer_info ** peer_list);
 /* version.c */
 extern char *n2n_sw_version, *n2n_sw_osName, *n2n_sw_buildDate;
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _N2N_H_ */
