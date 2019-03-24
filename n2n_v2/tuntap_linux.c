@@ -147,11 +147,11 @@ void tuntap_get_address(struct tuntap_dev *tuntap)
     snprintf( buf, sizeof(buf), "/sbin/ifconfig %s | /bin/sed -e '/inet addr:/!d' -e 's/^.*inet addr://' -e 's/ .*$//'",
               tuntap->dev_name );
     fp=popen(buf, "r");
-    if (fp )
+    if (fp)
     {
         memset(buf,0,N2N_LINUX_SYSTEMCMD_SIZE); /* make sure buf is NULL terminated. */
         fread(buf, 1, 15, fp);
-        fclose(fp);
+        pclose(fp);
         fp=NULL;
 
         traceEvent(TRACE_INFO, "ifconfig address = %s", buf);
