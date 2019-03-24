@@ -311,8 +311,8 @@ size_t hashed_peer_list_t_size(peer_info_t** htab) {
  *  The item new is added to the head of the list. New is modified during
  *  insertion. list takes ownership of new.
  */
-void peer_list_add( struct peer_info * * list,
-                    struct peer_info * newnode )
+void peer_list_add(struct peer_info ** list,
+                   struct peer_info * newnode)
 {
   newnode->next = *list;
   newnode->last_seen = time(NULL);
