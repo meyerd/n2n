@@ -207,7 +207,7 @@ typedef struct peer_info peer_info_t;
 })
 */
 
-#define PEER_INFO_COMPARATOR(e1, e2) (strncmp((const char*)(e1)->mac_addr, (const char*)(e2)->mac_addr, sizeof(n2n_mac_t)))
+#define PEER_INFO_COMPARATOR(e1, e2) (memcmp(e1->mac_addr, e2->mac_addr, sizeof(n2n_mac_t)))
 
 unsigned int peer_info_t_hash_function(peer_info_t *e);
 
