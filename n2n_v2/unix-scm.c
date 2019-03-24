@@ -27,18 +27,18 @@
 #include "scm.h"
 
 int SCM_Start(struct SCM_def *sd, int argc, char **argv) {
-	sd->mode=SVC_CONSOLE;
+	sd->mode = SVC_CONSOLE;
 
 	int err;
 
 	if (sd->init) {
-		err = sd->init(argc,argv);
-		if (err!=0) {
+		err = sd->init(argc, argv);
+		if (err != 0) {
 			return SVC_FAIL;
 		}
 	}
 
-	sd->main(argc,argv);
+	sd->main(argc, argv);
 	return SVC_OK;
 }
 

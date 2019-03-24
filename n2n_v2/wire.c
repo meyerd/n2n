@@ -400,7 +400,7 @@ int encode_REGISTER_SUPER_ACK( uint8_t * base,
                                const n2n_common_t * common,
                                const n2n_REGISTER_SUPER_ACK_t * reg )
 {
-    int retval=0;
+    int retval = 0;
     retval += encode_common( base, idx, common );
     retval += encode_buf( base, idx, reg->cookie, N2N_COOKIE_SIZE );
     retval += encode_mac( base, idx, reg->edgeMac );
@@ -422,7 +422,7 @@ int decode_REGISTER_SUPER_ACK( n2n_REGISTER_SUPER_ACK_t * reg,
                                size_t * rem,
                                size_t * idx )
 {
-    size_t retval=0;
+    size_t retval = 0;
 
     memset( reg, 0, sizeof(n2n_REGISTER_SUPER_ACK_t) );
     retval += decode_buf( reg->cookie, N2N_COOKIE_SIZE, base, rem, idx );

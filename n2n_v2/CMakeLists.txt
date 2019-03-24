@@ -45,9 +45,9 @@ endif(APPLE)
 if(NOT WIN32)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs -fPIC")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
-# Debug
-set(CMAKE_C_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
+# Debug 
+set(CMAKE_C_FLAGS_DEBUG "-g -fsanitize=address")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address")
 # Release
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
