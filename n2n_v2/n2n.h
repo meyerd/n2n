@@ -281,7 +281,7 @@ void print_n2n_version();
 struct peer_info * find_peer_by_mac( peer_info_t ** list,
                                      const n2n_mac_t mac );
 void   peer_list_add( struct peer_info * * list,
-                      struct peer_info * new );
+                      struct peer_info * newnode );
 size_t peer_list_size( const struct peer_info * list );
 void dealloc_peer( peer_info_t* peer );
 size_t hashed_peer_list_t_size(peer_info_t** htab);

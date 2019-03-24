@@ -504,9 +504,9 @@ static void edge_deinit(n2n_edge_t * eee)
     (eee->transop[N2N_TRANSOP_NULL_IDX].deinit)(&eee->transop[N2N_TRANSOP_NULL_IDX]);
 }
 
-static void readFromIPSocket( n2n_edge_t * eee );
+static void readFromIPSocket(n2n_edge_t *eee);
 
-static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running );
+static void readFromMgmtSocket(n2n_edge_t *eee, int *keep_running);
 
 static void help() {
   print_n2n_version();
@@ -1805,7 +1805,7 @@ static void readFromMgmtSocket( n2n_edge_t * eee, int * keep_running )
 
 
 /** Read a datagram from the main UDP socket to the internet. */
-static void readFromIPSocket( n2n_edge_t * eee )
+static void readFromIPSocket(n2n_edge_t *eee)
 {
     n2n_common_t        cmn; /* common fields in the packet header */
 
@@ -1821,8 +1821,8 @@ static void readFromIPSocket( n2n_edge_t * eee )
     size_t              msg_type;
     struct sockaddr_in  sender_sock;
     n2n_sock_t          sender;
-    n2n_sock_t *        orig_sender=NULL;
-    time_t              now=0;
+    n2n_sock_t *        orig_sender = NULL;
+    time_t              now = 0;
     size_t              i;
     int                 j;
 
@@ -1831,7 +1831,7 @@ static void readFromIPSocket( n2n_edge_t * eee )
 
     /* for PEER_INFO packages */
     n2n_PEER_INFO_t pi;
-    struct peer_info *  scan;
+    struct peer_info *scan;
 
     /* for REGISTER packages */
     n2n_REGISTER_t reg;
@@ -1863,7 +1863,7 @@ static void readFromIPSocket( n2n_edge_t * eee )
 
     /* The packet may not have an orig_sender socket spec. So default to last
      * hop as sender. */
-    orig_sender=&sender;
+    orig_sender = &sender;
 
     traceEvent(TRACE_INFO, "### Rx N2N UDP (%d) from %s", 
                (signed int)recvlen, sock_to_cstr(sockbuf1, &sender) );
@@ -2299,35 +2299,35 @@ int real_main(int argc, char* argv[])
     int     local_port = 0 /* any port */;
     int     mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
     char    tuntap_dev_name[N2N_IFNAMSIZ] = "edge0";
-    char    ip_mode[N2N_IF_MODE_SIZE]="static";
+    char    ip_mode[N2N_IF_MODE_SIZE] = "static";
     char    ip_addr[N2N_NETMASK_STR_SIZE] = "";
-    char    netmask[N2N_NETMASK_STR_SIZE]="255.255.255.0";
+    char    netmask[N2N_NETMASK_STR_SIZE] = "255.255.255.0";
     int     mtu = DEFAULT_MTU;
     int     got_s = 0;
 
 #ifndef WIN32
-    uid_t   userid=0; /* root is the only guaranteed ID */
-    gid_t   groupid=0; /* root is the only guaranteed ID */
+    uid_t   userid = 0; /* root is the only guaranteed ID */
+    gid_t   groupid = 0; /* root is the only guaranteed ID */
 #endif
 
-    char    device_mac[N2N_MACNAMSIZ]="";
-    char *  encrypt_key=NULL;
+    char    device_mac[N2N_MACNAMSIZ] = "";
+    char *  encrypt_key = NULL;
 
-    int     i, effectiveargc=0;
-    char ** effectiveargv=NULL;
+    int     i, effectiveargc = 0;
+    char ** effectiveargv = NULL;
     char  * linebuffer = NULL;
 
     n2n_edge_t eee; /* single instance for this program */
 
-    if (-1 == edge_init(&eee) )
+    if (-1 == edge_init(&eee))
     {
-        traceEvent( TRACE_ERROR, "Failed in edge_init" );
+        traceEvent(TRACE_ERROR, "Failed in edge_init");
         exit(1);
     }
 
-    if( getenv( "N2N_KEY" ))
+    if(getenv( "N2N_KEY" ))
     {
-        encrypt_key = strdup( getenv( "N2N_KEY" ));
+        encrypt_key = strdup(getenv("N2N_KEY"));
     }
 
 #ifdef WIN32
@@ -2581,8 +2581,8 @@ int real_main(int argc, char* argv[])
        case 'R': /* Remove */
        {
                // request service removal
-               if (SCM_Remove(&sd)==0) {
-                       printf("Deleted service '%s'\n",sd.name);
+               if (SCM_Remove(&sd) == 0) {
+                       printf("Deleted service '%s'\n", sd.name);
                } else {
                        printf("Service removal failed\n");
                }
@@ -2725,14 +2725,14 @@ int real_main(int argc, char* argv[])
     return run_loop(&eee);
 }
 
-int   keep_running=1;
-static int run_loop(n2n_edge_t * eee )
+int keep_running = 1;
+static int run_loop(n2n_edge_t *eee)
 {
     size_t numPurged;
-    time_t lastIfaceCheck=0;
-    time_t lastTransop=0;
-	time_t lastStatCalc=0;
-	time_t lastStatCalcDiff;
+    time_t lastIfaceCheck = 0;
+    time_t lastTransop = 0;
+    time_t lastStatCalc = 0;
+    time_t lastStatCalcDiff;
 
 
 #ifdef WIN32
@@ -2765,7 +2765,7 @@ static int run_loop(n2n_edge_t * eee )
         wait_time.tv_sec = SOCKET_TIMEOUT_INTERVAL_SECS; wait_time.tv_usec = 0;
 
         rc = select(max_sock+1, &socket_mask, NULL, NULL, &wait_time);
-        nowTime=time(NULL);
+        nowTime = time(NULL);
 
         /* Make sure ciphers are updated before the packet is treated. */
         if ( ( nowTime - lastTransop ) > TRANSOP_TICK_INTERVAL )
@@ -2845,28 +2845,28 @@ static int run_loop(n2n_edge_t * eee )
 
     } /* while */
 
-    send_deregister( eee, &(eee->supernode));
+    send_deregister(eee, &(eee->supernode));
 
     closesocket(eee->udp_sock);
     tuntap_close(&(eee->device));
 
-    edge_deinit( eee );
+    edge_deinit(eee);
 
     return(0);
 }
 
 int n2n_main(int argc, char **argv) {
-       return real_main(argc,argv);
+       return real_main(argc, argv);
 }
 
 int n2n_stop(void *param1) {
-       keep_running=0;
+       keep_running = 0;
        return 0;
 }
 
 int main(int argc, char **argv)
 {
-        if (SCM_Start(&sd,argc,argv)!=SVC_OK) {
+        if (SCM_Start(&sd, argc, argv) != SVC_OK) {
                 return 1;
         }
 
