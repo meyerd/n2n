@@ -24,6 +24,9 @@
 #ifndef _N2N_H_
 #define _N2N_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /*
    tunctl -t tun0
    tunctl -t tun1
@@ -297,4 +300,7 @@ size_t hashed_purge_expired_registrations(struct peer_info ** peer_list);
 /* version.c */
 extern char *n2n_sw_version, *n2n_sw_osName, *n2n_sw_buildDate;
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _N2N_H_ */
