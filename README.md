@@ -1,3 +1,11 @@
+This repository is maintained very sparsely
+===========================================
+
+Consider using the version at https://github.com/ntop/n2n
+as a lot of improvements from here have been ported to over
+there.
+
+
 This is a development branch of the n2n p2p vpn software.
 
 https://github.com/ntop/n2n
